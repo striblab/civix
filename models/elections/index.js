@@ -1,7 +1,5 @@
-/**
- * Election models.
- */
-
 module.exports = {
-  Elections: require('./elections.js')
+  Election: require('./election.js'),
+  Contest: require('./contest.js'),
+  Candidate: require('./candidate.js')
 };

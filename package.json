@@ -18,6 +18,7 @@
   "homepage": "https://github.com/striblab/civix#readme",
   "dependencies": {
     "dotenv": "^6.0.0",
+    "lodash": "^4.17.10",
     "pg": "^7.4.3",
     "sequelize": "^4.37.10"
   }

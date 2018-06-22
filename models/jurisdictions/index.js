@@ -1,4 +1,4 @@
 module.exports = {
-  Jurisdicitons: require('./jurisdictions.js'),
-  Divisions: require('./divisions.js')
+  Jurisdiciton: require('./jurisdiction.js'),
+  Division: require('./division')
 };

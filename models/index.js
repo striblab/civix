@@ -4,5 +4,7 @@
 
 module.exports = {
   elections: require('./elections'),
-  jurisdictions: require('./jurisdictions')
+  jurisdictions: require('./jurisdictions'),
+  sources: require('./sources'),
+  government: require('./government')
 };
