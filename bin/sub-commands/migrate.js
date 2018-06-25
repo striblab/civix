@@ -16,12 +16,14 @@ exports.builder = {
 };
 
 // Migrate
-exports.handler = argv => {
+exports.handler = async argv => {
   console.error('Syncing models...');
   const tools = {
     models: require('../../models'),
     config: require('../../config')
   };
 
-  return tools.config.db.sync();
+  let s = await tools.config.db.sync();
+  await tools.config.db.close();
+  return s;
 };

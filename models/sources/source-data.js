@@ -42,7 +42,9 @@ const SourceData = config.db.define(
   }
 );
 
-SourceData.belongsTo(Source);
+SourceData.belongsTo(Source, {
+  foreignKey: { allowNull: false }
+});
 
 // Export
 module.exports = SourceData;

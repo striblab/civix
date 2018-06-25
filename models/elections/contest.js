@@ -92,17 +92,25 @@ const Contest = config.db.define(
         { fields: ['questionTitle'] },
         { fields: ['voteType'] },
         { fields: ['reporting'] },
-        { fields: ['totalPrecincts'] }
+        { fields: ['totalPrecincts'] },
+        {
+          unique: true,
+          fields: ['ElectionId', 'OfficeId']
+        }
       ])
     )
   }
 );
 
 // A contest is tied to an election
-Contest.belongsTo(Election);
+Contest.belongsTo(Election, {
+  foreignKey: { allowNull: false }
+});
 
 // A contest is tied to an office
-Contest.belongsTo(Office);
+Contest.belongsTo(Office, {
+  foreignKey: { allowNull: false }
+});
 
 // Add source fields
 utils.extendWithSources(Contest, sources);

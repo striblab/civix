@@ -36,13 +36,19 @@ const Election = config.db.define(
   {
     underscored: true,
     indexes: utils.snakeCaseIndexes(
-      utils.addNameIndexes([{ fields: ['date'] }, { fields: ['type'] }])
+      utils.addNameIndexes([
+        { fields: ['date'] },
+        { fields: ['type'] },
+        { unique: true, fields: ['date', 'type', 'JurisdictionId'] }
+      ])
     )
   }
 );
 
 // Jurisidcition has a dvision
-Election.belongsTo(Jurisdiction);
+Election.belongsTo(Jurisdiction, {
+  foreignKey: { allowNull: false }
+});
 
 // Add source fields
 utils.extendWithSources(Election, sources);

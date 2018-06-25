@@ -58,7 +58,9 @@ const Candidate = config.db.define(
 );
 
 // Each candidate belongs to a contest
-Candidate.belongsTo(Contest);
+Candidate.belongsTo(Contest, {
+  foreignKey: { allowNull: false }
+});
 
 // Add source fields
 utils.extendWithSources(Candidate, sources);
