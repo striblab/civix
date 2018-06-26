@@ -68,13 +68,12 @@ exports.handler = async argv => {
 
   // Run importer
   try {
-    let i = await importerFunc({
+    await importerFunc({
       logger: logger.p,
       config,
       models: db.models,
       db: db
     });
-    return i;
   }
   catch (e) {
     logger.p(
@@ -82,4 +81,6 @@ exports.handler = async argv => {
       `Importer ran into error: ${e}: ${config.debug ? e.stack : ''}`
     );
   }
+
+  await db.close();
 };
