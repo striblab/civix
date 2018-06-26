@@ -6,20 +6,27 @@
 
 // Dependencies
 //const Sequelize = require('sequelize');
-const config = require('../../config');
 const utils = require('../model-utils.js');
 
 // Model
-const Division = config.db.define(
-  'division',
-  utils.snakeCaseFields(utils.extendWithNotes(utils.extendWithNames({}))),
-  {
-    underscored: true,
-    indexes: utils.snakeCaseIndexes(utils.addNameIndexes([]))
-  }
-);
+module.exports = db => {
+  let model = db.define(
+    'division',
+    utils.snakeCaseFields(utils.extendWithNotes(utils.extendWithNames({}))),
+    {
+      underscored: true,
+      indexes: utils.snakeCaseIndexes(utils.addNameIndexes([]))
+    }
+  );
 
-// Parent to a jurisdiction
-Division.belongsTo(Division, { as: 'Parent' });
+  // Associate
+  model.associate = function({ Source, SourceData }) {
+    // Parent to a jurisdiction
+    this.belongsTo(this, { as: 'parent' });
 
-module.exports = Division;
+    // Add source fields
+    utils.extendWithSources(this, Source, SourceData);
+  };
+
+  return model;
+};

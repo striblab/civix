@@ -6,21 +6,24 @@
 
 // Dependencies
 //const Sequelize = require('sequelize');
-const config = require('../../config');
-const sources = require('../sources');
 const utils = require('../model-utils.js');
 
 // Model
-const Body = config.db.define(
-  'body',
-  utils.snakeCaseFields(utils.extendWithNotes(utils.extendWithNames({}))),
-  {
-    underscored: true,
-    indexes: utils.snakeCaseIndexes(utils.addNameIndexes([]))
-  }
-);
+module.exports = db => {
+  let model = db.define(
+    'body',
+    utils.snakeCaseFields(utils.extendWithNotes(utils.extendWithNames({}))),
+    {
+      underscored: true,
+      indexes: utils.snakeCaseIndexes(utils.addNameIndexes([]))
+    }
+  );
 
-// Add source fields
-utils.extendWithSources(Body, sources);
+  // Associate
+  model.associate = function({ Source, SourceData }) {
+    // Add source fields
+    utils.extendWithSources(this, Source, SourceData);
+  };
 
-module.exports = Body;
+  return model;
+};

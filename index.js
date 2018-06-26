@@ -4,5 +4,6 @@
 
 module.exports = {
   models: require('./models'),
-  config: require('./config')
+  config: require('./config'),
+  tools: require('./tools')
 };

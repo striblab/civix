@@ -9,21 +9,20 @@ exports.command = 'migrate [migration]';
 exports.describe = 'Setup the database or migrate to a specific migration.';
 
 // Options
-exports.builder = {
-  migration: {
-    default: 'cool'
-  }
+exports.builder = yargs => {
+  yargs.positional('migration', {
+    describe: 'TODO',
+    type: 'string'
+  });
+
+  return yargs;
 };
 
 // Migrate
 exports.handler = async argv => {
-  console.error('Syncing models...');
-  const tools = {
-    models: require('../../models'),
-    config: require('../../config')
-  };
-
-  let s = await tools.config.db.sync();
-  await tools.config.db.close();
-  return s;
+  const db = require('../../lib/db.js');
+  const logger = require('../../lib/logger.js');
+  logger.info('Syncing models...');
+  await db.sync();
+  await db.close();
 };

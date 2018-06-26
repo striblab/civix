@@ -8,26 +8,26 @@
 // Dependencies
 const Sequelize = require('sequelize');
 const utils = require('../model-utils.js');
-const config = require('../../config');
 
 // Model
-const Source = config.db.define(
-  'source',
-  utils.snakeCaseFields(
-    utils.extendWithNotes(
-      utils.extendWithNames({
-        url: {
-          type: Sequelize.STRING(128),
-          description: 'The jurisdiction name identifier.'
-        }
-      })
-    )
-  ),
-  {
-    underscored: true,
-    indexes: utils.snakeCaseIndexes(utils.addNameIndexes([]))
-  }
-);
+module.exports = db => {
+  let model = db.define(
+    'source',
+    utils.snakeCaseFields(
+      utils.extendWithNotes(
+        utils.extendWithNames({
+          url: {
+            type: Sequelize.STRING(128),
+            description: 'The jurisdiction name identifier.'
+          }
+        })
+      )
+    ),
+    {
+      underscored: true,
+      indexes: utils.snakeCaseIndexes(utils.addNameIndexes([]))
+    }
+  );
 
-// Export
-module.exports = Source;
+  return model;
+};

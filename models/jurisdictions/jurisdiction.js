@@ -6,46 +6,49 @@
 
 // Dependencies
 const Sequelize = require('sequelize');
-const Division = require('./division');
-const sources = require('../sources');
 const utils = require('../model-utils.js');
-const config = require('../../config');
 
 // Model
-const Jurisdiction = config.db.define(
-  'jurisdiction',
-  utils.snakeCaseFields(
-    utils.extendWithNotes(
-      utils.extendWithNames({
-        fips: {
-          type: Sequelize.STRING(128),
-          description: 'The Census FIPS code for the jurisdiction.'
-        },
-        geometry: {
-          // Geometry is a bit simpiler, and we don't intended to do
-          // serious mesasurements, so we don't use geography type.
-          type: Sequelize.GEOMETRY('POLYGON', 4326),
-          description: 'The Census FIPS code for the jurisdiction.'
-        }
-      })
-    )
-  ),
-  {
-    underscored: true,
-    indexes: utils.snakeCaseIndexes(
-      utils.addNameIndexes([{ fields: ['fips'] }])
-    )
-  }
-);
+module.exports = db => {
+  let model = db.define(
+    'jurisdiction',
+    utils.snakeCaseFields(
+      utils.extendWithNotes(
+        utils.extendWithNames({
+          fips: {
+            type: Sequelize.STRING(128),
+            description: 'The Census FIPS code for the jurisdiction.'
+          },
+          geometry: {
+            // Geometry is a bit simpiler, and we don't intended to do
+            // serious mesasurements, so we don't use geography type.
+            type: Sequelize.GEOMETRY('POLYGON', 4326),
+            description: 'The Census FIPS code for the jurisdiction.'
+          }
+        })
+      )
+    ),
+    {
+      underscored: true,
+      indexes: utils.snakeCaseIndexes(
+        utils.addNameIndexes([{ fields: ['fips'] }])
+      )
+    }
+  );
 
-// Parent to a jurisdiction
-Jurisdiction.belongsTo(Jurisdiction, { as: 'parent' });
+  // Associate
+  model.associate = function({ Division, Source, SourceData }) {
+    // Parent to a jurisdiction
+    this.belongsTo(this, { as: 'parent' });
 
-// Jurisidcition has a dvision
-Jurisdiction.belongsTo(Division);
+    // Jurisidcition has a dvision
+    this.belongsTo(Division, {
+      foreignKey: { allowNull: false }
+    });
 
-// Add source fields
-utils.extendWithSources(Jurisdiction, sources);
+    // Add source fields
+    utils.extendWithSources(this, Source, SourceData);
+  };
 
-// Export
-module.exports = Jurisdiction;
+  return model;
+};

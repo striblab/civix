@@ -68,12 +68,12 @@ function extendWithNotes(fields = {}) {
 }
 
 // Extend with source
-function extendWithSources(model, sources) {
-  model.belongsToMany(sources.Source, {
+function extendWithSources(model, Source, SourceData) {
+  model.belongsToMany(Source, {
     through: `${model.options.name.plural}_sources`,
     underscored: true
   });
-  model.belongsToMany(sources.SourceData, {
+  model.belongsToMany(SourceData, {
     through: `${model.options.name.plural}_source_data`,
     underscored: true
   });

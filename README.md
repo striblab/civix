@@ -17,3 +17,7 @@ Inspiration taken from [Politico's civic](https://github.com/The-Politico/politi
     - If using Postgres.app on a Mac, this [gist about setting up PostGIS](https://gist.github.com/joshuapowell/e209a4dac5c8187ea8ce) is helpful, but needs to be adjusted for versions.
   - `npm run migrate`: This will create tables in the database as needed.
     - _TODO_: Migrations not currently implemented.
+
+## Configuration
+
+- `CIVIC_LOGS`: Path to where logs, defaults to `.logs` in the current working directory.
