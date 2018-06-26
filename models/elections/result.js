@@ -52,13 +52,7 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({
-    Contest,
-    Candidate,
-    Jurisdiction,
-    Source,
-    SourceData
-  }) {
+  model.associate = function({ Contest, Candidate, Jurisdiction, SourceData }) {
     // A result is tied to a contest
     this.belongsTo(Contest, {
       foreignKey: { allowNull: false }
@@ -74,7 +68,7 @@ module.exports = db => {
     this.belongsTo(Jurisdiction);
 
     // Add source fields
-    utils.extendWithSources(this, Source, SourceData);
+    utils.extendWithSources(this, SourceData);
   };
 
   return model;

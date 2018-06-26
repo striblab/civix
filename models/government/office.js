@@ -26,13 +26,7 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({
-    Jurisdiction,
-    Body,
-    Election,
-    Source,
-    SourceData
-  }) {
+  model.associate = function({ Jurisdiction, Body, Election, SourceData }) {
     // Tied to a jurisdiction
     this.belongsTo(Jurisdiction, {
       foreignKey: { allowNull: false }
@@ -49,7 +43,7 @@ module.exports = db => {
     });
 
     // Add source fields
-    utils.extendWithSources(this, Source, SourceData);
+    utils.extendWithSources(this, SourceData);
   };
 
   return model;

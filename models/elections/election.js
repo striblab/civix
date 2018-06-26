@@ -44,14 +44,14 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Jurisdiction, Source, SourceData }) {
+  model.associate = function({ Jurisdiction, SourceData }) {
     // Jurisidcition has a dvision
     this.belongsTo(Jurisdiction, {
       foreignKey: { allowNull: false }
     });
 
     // Add source fields
-    utils.extendWithSources(this, Source, SourceData);
+    utils.extendWithSources(this, SourceData);
   };
 
   return model;

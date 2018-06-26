@@ -37,7 +37,7 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Division, Source, SourceData }) {
+  model.associate = function({ Division, SourceData }) {
     // Parent to a jurisdiction
     this.belongsTo(this, { as: 'parent' });
 
@@ -47,7 +47,7 @@ module.exports = db => {
     });
 
     // Add source fields
-    utils.extendWithSources(this, Source, SourceData);
+    utils.extendWithSources(this, SourceData);
   };
 
   return model;

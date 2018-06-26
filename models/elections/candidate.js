@@ -56,14 +56,14 @@ module.exports = db => {
     }
   );
 
-  model.associate = function({ Contest, Source, SourceData }) {
+  model.associate = function({ Contest, SourceData }) {
     // Each candidate belongs to a contest
     this.belongsTo(Contest, {
       foreignKey: { allowNull: false }
     });
 
     // Add source fields
-    utils.extendWithSources(this, Source, SourceData);
+    utils.extendWithSources(this, SourceData);
   };
 
   return model;

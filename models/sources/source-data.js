@@ -13,31 +13,24 @@ const utils = require('../model-utils.js');
 module.exports = db => {
   let model = db.define(
     'source_data',
-    {
+    utils.snakeCaseFields({
       id: {
         type: Sequelize.STRING(128),
         primaryKey: true,
         description: 'The string ID for the source.'
-      },
-      type: {
-        type: Sequelize.STRING(128),
-        description: 'The format of the data, such as json, or csv.'
       },
       sourceIdentifier: {
         type: Sequelize.STRING(128),
         description: 'The source identifier; pulled out to help search things.'
       },
       data: {
-        type: Sequelize.TEXT(),
-        description: 'The source data, probably serialized JSON.'
+        type: Sequelize.JSON(),
+        description: 'The source data as JSON.'
       }
-    },
+    }),
     {
       underscored: true,
-      indexes: utils.snakeCaseIndexes([
-        { fields: ['type'] },
-        { fields: ['data'] }
-      ])
+      indexes: utils.snakeCaseIndexes([{ fields: ['sourceIdentifier'] }])
     }
   );
 
