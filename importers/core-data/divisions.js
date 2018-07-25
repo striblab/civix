@@ -6,7 +6,7 @@
  */
 
 // Dependencies
-const ensureSource = require('./source.js');
+const ensureManualSource = require('./manual-source.js');
 
 // Import function
 module.exports = async function coreDataDivisionsImporter({
@@ -35,7 +35,7 @@ module.exports = async function coreDataDivisionsImporter({
       ];
 
       // Start promise chain
-      return ensureSource({ models, transaction: t }).then(source => {
+      return ensureManualSource({ models, transaction: t }).then(source => {
         updates.push(source);
 
         return createCountry({
@@ -90,9 +90,9 @@ module.exports = async function coreDataDivisionsImporter({
       updates.forEach(u => {
         logger(
           'info',
-          u[1]
-            ? `Created new division: ${u[0].dataValues.id}`
-            : `Already existed: ${u[0].dataValues.id}`
+          `[${u[0].constructor.name}] ${u[1] ? 'Created' : 'Existed'}: ${
+            u[0].dataValues.id
+          }`
         );
       });
     })
