@@ -56,9 +56,14 @@ module.exports = db => {
     }
   );
 
-  model.associate = function({ Contest, SourceData }) {
+  model.associate = function({ Party, Contest, SourceData }) {
     // Each candidate belongs to a contest
     this.belongsTo(Contest, {
+      foreignKey: { allowNull: false }
+    });
+
+    // Each candidate belongs to a party
+    this.belongsTo(Party, {
       foreignKey: { allowNull: false }
     });
 

@@ -17,6 +17,14 @@ module.exports = db => {
     utils.snakeCaseFields(
       utils.extendWithNotes(
         utils.extendWithNames({
+          localId: {
+            type: Sequelize.STRING(128),
+            description: 'ID used by local administration, likely the state.'
+          },
+          apID: {
+            type: Sequelize.STRING(128),
+            description: 'ID used by the Associated Press.'
+          },
           type: {
             type: Sequelize.ENUM('general', 'primary', 'special'),
             description:
@@ -88,6 +96,8 @@ module.exports = db => {
       underscored: true,
       indexes: utils.snakeCaseIndexes(
         utils.addNameIndexes([
+          { fields: ['localId'] },
+          { fields: ['apId'] },
           { fields: ['seats'] },
           { fields: ['uncontested'] },
           { fields: ['partisan'] },

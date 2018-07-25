@@ -15,6 +15,10 @@ module.exports = db => {
     utils.snakeCaseFields(
       utils.extendWithNotes(
         utils.extendWithNames({
+          localId: {
+            type: Sequelize.STRING(128),
+            description: 'ID used by local administration.'
+          },
           fips: {
             type: Sequelize.STRING(128),
             description: 'The Census FIPS code for the jurisdiction.'
@@ -31,7 +35,7 @@ module.exports = db => {
     {
       underscored: true,
       indexes: utils.snakeCaseIndexes(
-        utils.addNameIndexes([{ fields: ['fips'] }])
+        utils.addNameIndexes([{ fields: ['fips'] }, { fields: ['localId'] }])
       )
     }
   );
