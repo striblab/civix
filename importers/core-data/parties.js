@@ -7,7 +7,7 @@
 
 // Dependencies
 const _ = require('lodash');
-const ensureManualSource = require('./manual-source.js');
+const ensureManualSource = require('./source-manual.js');
 
 // Import function
 module.exports = async function coreDataDivisionsImporter({

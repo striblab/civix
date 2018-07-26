@@ -26,9 +26,9 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Jurisdiction, Body, Election, SourceData }) {
-    // Tied to a jurisdiction
-    this.belongsTo(Jurisdiction, {
+  model.associate = function({ Boundary, Body, Election, SourceData }) {
+    // Tied to a boundary
+    this.belongsTo(Boundary, {
       foreignKey: { allowNull: false }
     });
 

@@ -45,14 +45,14 @@ module.exports = db => {
         {
           unique: true,
           // The combination of foreign keys needs to be unique
-          fields: ['ContestId', 'CandidateId', 'ParentId', 'JurisdictionId']
+          fields: ['ContestId', 'CandidateId', 'ParentId', 'BoundaryId']
         }
       ])
     }
   );
 
   // Associate
-  model.associate = function({ Contest, Candidate, Jurisdiction, SourceData }) {
+  model.associate = function({ Contest, Candidate, Boundary, SourceData }) {
     // A result is tied to a contest
     this.belongsTo(Contest, {
       foreignKey: { allowNull: false }
@@ -63,9 +63,10 @@ module.exports = db => {
       foreignKey: { allowNull: false }
     });
 
-    // A results can be a subresult of of other
+    // A results can be a subresult of of other and tied to a specific
+    // boundary
     this.belongsTo(this, { as: 'parent' });
-    this.belongsTo(Jurisdiction);
+    this.belongsTo(Boundary);
 
     // Add source fields
     utils.extendWithSources(this, SourceData);

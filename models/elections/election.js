@@ -37,16 +37,16 @@ module.exports = db => {
         utils.addNameIndexes([
           { fields: ['date'] },
           { fields: ['type'] },
-          { unique: true, fields: ['date', 'type', 'JurisdictionId'] }
+          { unique: true, fields: ['date', 'type', 'BoundaryId'] }
         ])
       )
     }
   );
 
   // Associate
-  model.associate = function({ Jurisdiction, SourceData }) {
-    // Jurisidcition has a dvision
-    this.belongsTo(Jurisdiction, {
+  model.associate = function({ Boundary, SourceData }) {
+    // Election has a boundary, most likely this is just the state
+    this.belongsTo(Boundary, {
       foreignKey: { allowNull: false }
     });
 

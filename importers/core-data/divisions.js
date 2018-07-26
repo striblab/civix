@@ -6,7 +6,7 @@
  */
 
 // Dependencies
-const ensureManualSource = require('./manual-source.js');
+const ensureManualSource = require('./source-manual.js');
 
 // Import function
 module.exports = async function coreDataDivisionsImporter({
@@ -80,6 +80,24 @@ module.exports = async function coreDataDivisionsImporter({
                 county
               }).then(results => {
                 updates = updates.concat(results);
+
+                // Find county result
+                let local = results[0].find(r => {
+                  return r.dataValues.id === 'county-local';
+                });
+                if (!local) {
+                  throw new Error('Unable to find county division data.');
+                }
+
+                return createLocalChildren({
+                  models,
+                  include: divisionIncludes,
+                  transaction: t,
+                  source: source[0],
+                  local
+                }).then(results => {
+                  updates = updates.concat(results);
+                });
               });
             });
           });
@@ -87,6 +105,7 @@ module.exports = async function coreDataDivisionsImporter({
       });
     })
     .then(results => {
+      console.log(results);
       updates.forEach(u => {
         logger(
           'info',
@@ -256,6 +275,36 @@ function createStateChildren({ models, include, transaction, source, state }) {
           source_id: source.dataValues.id
         }
       ]
+    },
+    {
+      id: 'park-district',
+      name: 'park-district',
+      title: 'Park district',
+      sort: 'park',
+      parent_id: state.dataValues.id,
+      source_data: [
+        {
+          id: 'core-data-division-park-district',
+          sourceIdentifier: '',
+          data: { manual: true },
+          source_id: source.dataValues.id
+        }
+      ]
+    },
+    {
+      id: 'judicial',
+      name: 'judicial',
+      title: 'Judicial',
+      sort: 'judicial',
+      parent_id: state.dataValues.id,
+      source_data: [
+        {
+          id: 'core-data-division-judicial',
+          sourceIdentifier: '',
+          data: { manual: true },
+          source_id: source.dataValues.id
+        }
+      ]
     }
   ];
 
@@ -319,6 +368,53 @@ function createCountyChildren({
       source_data: [
         {
           id: 'core-data-division-county-precinct',
+          sourceIdentifier: '',
+          data: { manual: true },
+          source_id: source.dataValues.id
+        }
+      ]
+    }
+  ];
+
+  return Promise.all(
+    children.map(c => {
+      return models.Division.findOrCreate({
+        where: { id: c.id },
+        include,
+        transaction,
+        defaults: c
+      });
+    })
+  );
+}
+
+// Create local children
+function createLocalChildren({ models, include, transaction, source, local }) {
+  let children = [
+    {
+      id: 'local-ward',
+      name: 'local-ward',
+      title: 'Ward',
+      sort: 'ward local',
+      parent_id: local.dataValues.id,
+      source_data: [
+        {
+          id: 'core-data-division-local-ward',
+          sourceIdentifier: '',
+          data: { manual: true },
+          source_id: source.dataValues.id
+        }
+      ]
+    },
+    {
+      id: 'local-park-board',
+      name: 'local-park-board',
+      title: 'Park board',
+      sort: 'park board local',
+      parent_id: local.dataValues.id,
+      source_data: [
+        {
+          id: 'core-data-division-local-park-board',
           sourceIdentifier: '',
           data: { manual: true },
           source_id: source.dataValues.id
