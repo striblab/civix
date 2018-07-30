@@ -25,17 +25,6 @@ module.exports = async function coreDataDivisionsImporter({
       return ensureManualSource({ models, transaction: t }).then(source => {
         updates = updates.concat([source]);
 
-        // Related model includes
-        const include = [
-          {
-            model: models.SourceData,
-            as: 'source_data',
-            include: {
-              model: models.Source
-            }
-          }
-        ];
-
         // Inspired by https://www.fec.gov/campaign-finance-data/party-code-descriptions/
         let parties = [
           ['ACE', 'Ace Party'],
@@ -136,24 +125,19 @@ module.exports = async function coreDataDivisionsImporter({
               sort: `${p[2] ? p[2] + ' ' : ''}${_
                 .kebabCase(p[1])
                 .replace(/-/g, ' ')}`,
-              source_data: [
-                {
-                  id: `core-data-division-parties-${_.kebabCase(p[0])}`,
-                  sourceIdentifier: p[0],
-                  data: {
-                    manual: true,
-                    inspiration:
-                      'https://www.fec.gov/campaign-finance-data/party-code-descriptions/'
-                  },
-                  source_id: source[0].dataValues.id
+              sourceData: {
+                [source[0].get('id')]: {
+                  manual: true,
+                  inspiration:
+                    'https://www.fec.gov/campaign-finance-data/party-code-descriptions/'
                 }
-              ]
+              }
             };
 
             return models.Party.findOrCreate({
               where: { id: d.id },
               transaction: t,
-              include,
+              include: models.Party.__associations,
               defaults: d
             });
           })

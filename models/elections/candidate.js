@@ -15,35 +15,37 @@ module.exports = db => {
   let model = db.define(
     'candidate',
     utils.snakeCaseFields(
-      utils.extendWithNotes({
-        id: {
-          type: Sequelize.STRING(128),
-          primaryKey: true,
-          description: 'The string ID.'
-        },
-        name: {
-          type: Sequelize.STRING(128),
-          description: 'The human-discernable name identifier (slug).',
-          allowNull: false,
-          unique: true
-        },
-        fullName: {
-          type: Sequelize.STRING(256),
-          description:
-            'The candidates full name that is displayed for publication.',
-          allowNull: false
-        },
-        shortName: {
-          type: Sequelize.STRING(256),
-          description:
-            'The short name used for publication, probably the last name of the candidate.'
-        },
-        sort: {
-          type: Sequelize.STRING(256),
-          description:
-            'The full name used for sorting, such as last name first.'
-        }
-      })
+      utils.extendWithSourceData(
+        utils.extendWithNotes({
+          id: {
+            type: Sequelize.STRING(128),
+            primaryKey: true,
+            description: 'The string ID.'
+          },
+          name: {
+            type: Sequelize.STRING(128),
+            description: 'The human-discernable name identifier (slug).',
+            allowNull: false,
+            unique: true
+          },
+          fullName: {
+            type: Sequelize.STRING(256),
+            description:
+              'The candidates full name that is displayed for publication.',
+            allowNull: false
+          },
+          shortName: {
+            type: Sequelize.STRING(256),
+            description:
+              'The short name used for publication, probably the last name of the candidate.'
+          },
+          sort: {
+            type: Sequelize.STRING(256),
+            description:
+              'The full name used for sorting, such as last name first.'
+          }
+        })
+      )
     ),
     {
       underscored: true,
@@ -56,19 +58,25 @@ module.exports = db => {
     }
   );
 
-  model.associate = function({ Party, Contest, SourceData }) {
+  model.associate = function({ Party, Contest, Source }) {
+    this.__associations = [];
+
     // Each candidate belongs to a contest
-    this.belongsTo(Contest, {
-      foreignKey: { allowNull: false }
-    });
+    this.__associations.push(
+      this.belongsTo(Contest, {
+        foreignKey: { allowNull: false }
+      })
+    );
 
     // Each candidate belongs to a party
-    this.belongsTo(Party, {
-      foreignKey: { allowNull: false }
-    });
+    this.__associations.push(
+      this.belongsTo(Party, {
+        foreignKey: { allowNull: false }
+      })
+    );
 
     // Add source fields
-    utils.extendWithSources(this, SourceData);
+    utils.extendWithSources(this, Source);
   };
 
   return model;

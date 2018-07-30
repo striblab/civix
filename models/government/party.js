@@ -11,13 +11,15 @@ module.exports = db => {
   let model = db.define(
     'party',
     utils.snakeCaseFields(
-      utils.extendWithNotes(
-        utils.extendWithNames({
-          abbreviation: {
-            type: Sequelize.STRING(32),
-            description: 'The abbreviation used by the party.'
-          }
-        })
+      utils.extendWithSourceData(
+        utils.extendWithNotes(
+          utils.extendWithNames({
+            abbreviation: {
+              type: Sequelize.STRING(32),
+              description: 'The abbreviation used by the party.'
+            }
+          })
+        )
       )
     ),
     {
@@ -29,9 +31,9 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ SourceData }) {
+  model.associate = function({ Source }) {
     // Add source fields
-    utils.extendWithSources(this, SourceData);
+    utils.extendWithSources(this, Source);
   };
 
   return model;

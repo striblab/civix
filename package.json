@@ -22,7 +22,7 @@
     "glob": "^7.1.2",
     "lodash": "^4.17.10",
     "pg": "^7.4.3",
-    "sequelize": "^4.37.10",
+    "sequelize": "^4.38.0",
     "shapefile": "^0.6.6",
     "winston": "^3.0.0",
     "yargs": "^11.0.0"

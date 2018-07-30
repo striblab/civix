@@ -5,7 +5,7 @@
  */
 
 // Dependencies
-//const Sequelize = require('sequelize');
+const Sequelize = require('sequelize');
 const utils = require('../model-utils.js');
 
 // Model
@@ -13,10 +13,15 @@ module.exports = db => {
   let model = db.define(
     'office',
     utils.snakeCaseFields(
-      utils.extendWithNotes(
-        utils.extendWithNames({
-          // Fields?
-        })
+      utils.extendWithSourceData(
+        utils.extendWithNotes(
+          utils.extendWithNames({
+            seatName: {
+              type: Sequelize.STRING(256),
+              description: 'The name of the seat, such as "A" or "B".'
+            }
+          })
+        )
       )
     ),
     {
@@ -26,24 +31,30 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Boundary, Body, Election, SourceData }) {
+  model.associate = function({ Boundary, Body, Election, Source }) {
+    this.__associations = [];
+
     // Tied to a boundary
-    this.belongsTo(Boundary, {
-      foreignKey: { allowNull: false }
-    });
+    this.__associations.push(
+      this.belongsTo(Boundary, {
+        foreignKey: { allowNull: false }
+      })
+    );
 
     // Possibly tied to a body
-    this.belongsTo(Body);
+    this.__associations.push(this.belongsTo(Body));
 
     // An office has many elections
-    this.belongsToMany(Election, {
-      through: 'offices_elections',
-      underscore: true,
-      foreignKey: { allowNull: false }
-    });
+    this.__associations.push(
+      this.belongsToMany(Election, {
+        through: 'offices_elections',
+        underscore: true,
+        foreignKey: { allowNull: false }
+      })
+    );
 
     // Add source fields
-    utils.extendWithSources(this, SourceData);
+    utils.extendWithSources(this, Source);
   };
 
   return model;

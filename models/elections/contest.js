@@ -16,80 +16,84 @@ module.exports = db => {
     'contest',
     utils.snakeCaseFields(
       utils.extendWithNotes(
-        utils.extendWithNames({
-          localId: {
-            type: Sequelize.STRING(128),
-            description: 'ID used by local administration, likely the state.'
-          },
-          apID: {
-            type: Sequelize.STRING(128),
-            description: 'ID used by the Associated Press.'
-          },
-          type: {
-            type: Sequelize.ENUM('general', 'primary', 'special'),
-            description:
-              'The type of the election for this specific contest; overriding the election value.',
-            allowNull: true
-          },
-          seats: {
-            type: Sequelize.INTEGER(),
-            description: 'The number of seats being elected.',
-            allowNull: false,
-            defaultValue: 1
-          },
-          uncontested: {
-            type: Sequelize.BOOLEAN(),
-            description:
-              'Whether this contest is uncontested (ignoring write-ins).',
-            allowNull: false,
-            defaultValue: false
-          },
-          partisan: {
-            type: Sequelize.BOOLEAN(),
-            description: 'Whether this contest is partisan.',
-            allowNull: false,
-            defaultValue: true
-          },
-          question: {
-            type: Sequelize.BOOLEAN(),
-            description: 'Whether this contest is a question (ballot measure).',
-            allowNull: false,
-            defaultValue: false
-          },
-          questionTitle: {
-            type: Sequelize.STRING(256),
-            description: 'The title of the question.'
-          },
-          questionText: {
-            type: Sequelize.TEXT(),
-            description: 'The full text of the question.'
-          },
-          voteType: {
-            type: Sequelize.ENUM(
-              'majority',
-              'ranked-choice',
-              'run-off',
-              'other'
-            ),
-            description: 'How this contest gets tallied up.',
-            allowNull: false,
-            defaultValue: 'majority'
-          },
-          reporting: {
-            type: Sequelize.INTEGER(),
-            description:
-              'The number of precinct reporting, use NULL for unknown.'
-          },
-          totalPrecincts: {
-            type: Sequelize.INTEGER(),
-            description: 'The total number of precincts, use NULL for unknown.'
-          },
-          // Maybe this should be determined from candidate votes?
-          totalVotes: {
-            type: Sequelize.INTEGER(),
-            description: 'The total number of votes cast.'
-          }
-        })
+        utils.extendWithSourceData(
+          utils.extendWithNames({
+            localId: {
+              type: Sequelize.STRING(128),
+              description: 'ID used by local administration, likely the state.'
+            },
+            apID: {
+              type: Sequelize.STRING(128),
+              description: 'ID used by the Associated Press.'
+            },
+            type: {
+              type: Sequelize.ENUM('general', 'primary', 'special'),
+              description:
+                'The type of the election for this specific contest; overriding the election value.',
+              allowNull: true
+            },
+            seats: {
+              type: Sequelize.INTEGER(),
+              description: 'The number of seats being elected.',
+              allowNull: false,
+              defaultValue: 1
+            },
+            uncontested: {
+              type: Sequelize.BOOLEAN(),
+              description:
+                'Whether this contest is uncontested (ignoring write-ins).',
+              allowNull: false,
+              defaultValue: false
+            },
+            partisan: {
+              type: Sequelize.BOOLEAN(),
+              description: 'Whether this contest is partisan.',
+              allowNull: false,
+              defaultValue: true
+            },
+            question: {
+              type: Sequelize.BOOLEAN(),
+              description:
+                'Whether this contest is a question (ballot measure).',
+              allowNull: false,
+              defaultValue: false
+            },
+            questionTitle: {
+              type: Sequelize.STRING(256),
+              description: 'The title of the question.'
+            },
+            questionText: {
+              type: Sequelize.TEXT(),
+              description: 'The full text of the question.'
+            },
+            voteType: {
+              type: Sequelize.ENUM(
+                'majority',
+                'ranked-choice',
+                'run-off',
+                'other'
+              ),
+              description: 'How this contest gets tallied up.',
+              allowNull: false,
+              defaultValue: 'majority'
+            },
+            reporting: {
+              type: Sequelize.INTEGER(),
+              description:
+                'The number of precinct reporting, use NULL for unknown.'
+            },
+            totalPrecincts: {
+              type: Sequelize.INTEGER(),
+              description:
+                'The total number of precincts, use NULL for unknown.'
+            },
+            // Maybe this should be determined from candidate votes?
+            totalVotes: {
+              type: Sequelize.INTEGER(),
+              description: 'The total number of votes cast.'
+            }
+          })
+        )
       )
     ),
     {
@@ -108,7 +112,7 @@ module.exports = db => {
           { fields: ['totalPrecincts'] },
           {
             unique: true,
-            fields: ['ElectionId', 'OfficeId']
+            fields: ['ElectionId', 'OfficeId', 'PartyId']
           }
         ])
       )
@@ -116,19 +120,33 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Election, Office, SourceData }) {
+  model.associate = function({ Election, Office, Party, Source }) {
+    this.__associations = [];
+
     // A contest is tied to an election
-    this.belongsTo(Election, {
-      foreignKey: { allowNull: false }
-    });
+    this.__associations.push(
+      this.belongsTo(Election, {
+        foreignKey: { allowNull: false }
+      })
+    );
 
     // A contest is tied to an office
-    this.belongsTo(Office, {
-      foreignKey: { allowNull: false }
-    });
+    this.__associations.push(
+      this.belongsTo(Office, {
+        foreignKey: { allowNull: false }
+      })
+    );
+
+    // A contest can have a party tied to it if it is
+    // a primary
+    this.__associations.push(
+      this.belongsTo(Party, {
+        foreignKey: { allowNull: true }
+      })
+    );
 
     // Add source fields
-    utils.extendWithSources(this, SourceData);
+    utils.extendWithSources(this, Source);
   };
 
   return model;
