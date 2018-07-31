@@ -1,7 +1,11 @@
 /**
- * Importer for core data: Boundary: States
+ * Source:
+ * https://gisdata.mn.gov/dataset/bdry-counties-in-minnesota
+ */
+/**
+ * Importer for core data: Boundary: MN Counties
  *
- * From Census Tiger Lines file: https://www.census.gov/cgi-bin/geo/shapefiles/index.php?year=2017&layergroup=States+%28and+equivalent%29
+ * From Minnesota Geospatial Commons: https://gisdata.mn.gov/dataset/bdry-counties-in-minnesota
  */
 
 // Dependencies
@@ -9,7 +13,8 @@ const _ = require('lodash');
 const path = require('path');
 const shapefile = require('shapefile');
 const reproject = require('reproject');
-const ensureTigerSource = require('./source-census-tiger-lines.js');
+const epsg = require('../../lib/epsg.js');
+const ensureMNGeoSource = require('./source-mn-geo-commons.js');
 
 // Import function
 module.exports = async function coreDataDivisionsImporter({
@@ -17,23 +22,23 @@ module.exports = async function coreDataDivisionsImporter({
   models,
   db
 }) {
-  logger('info', 'Core data: Boundary: States importer...');
+  logger('info', 'Core data: Boundary: MN Counties importer...');
   let updates = [];
 
   // Wrap in transaction
   return db.sequelize
     .transaction({}, t => {
       // Start promise chain
-      return ensureTigerSource({ models, transaction: t }).then(tigerSource => {
-        updates = updates.concat([tigerSource]);
+      return ensureMNGeoSource({ models, transaction: t }).then(mnGeoSource => {
+        updates = updates.concat([mnGeoSource]);
 
-        return getShapes().then(states => {
+        return getShapes().then(counties => {
           return importStates({
-            states,
+            counties,
             db,
             transaction: t,
             models,
-            source: tigerSource[0]
+            source: mnGeoSource[0]
           }).then(results => {
             updates = updates.concat(results);
           });
@@ -57,7 +62,10 @@ module.exports = async function coreDataDivisionsImporter({
 };
 
 // Get shapes
-function getShapes() {
+async function getShapes() {
+  // Get EPSG
+  let sourceEPSG = await epsg('EPSG:26915');
+
   return new Promise((resolve, reject) => {
     let collected = [];
 
@@ -66,18 +74,18 @@ function getShapes() {
         path.join(
           __dirname,
           'data',
-          'boundaries-states',
-          'tl_2017_us_state',
-          'tl_2017_us_state.shp'
+          'boundaries-counties',
+          'shp_bdry_counties_in_minnesota',
+          'mn_county_boundaries_multipart.shp'
         )
       )
       .then(source =>
-        source.read().then(function collect(result) {
+        source.read().then(async function collect(result) {
           if (result.done) {
             return resolve(collected);
           }
           // Reproject and add CRS
-          let r = reproject.reproject(result.value, 'EPSG:4269', 'EPSG:4326');
+          let r = reproject.reproject(result.value, sourceEPSG, 'EPSG:4326');
           r.geometry.crs = { type: 'name', properties: { name: 'EPSG:4326' } };
 
           // Needs to be MultiPolygon
@@ -95,12 +103,17 @@ function getShapes() {
 }
 
 // Import states
-function importStates({ states, db, transaction, models, source }) {
+function importStates({ counties, db, transaction, models, source }) {
   return Promise.all(
-    states.map(s => {
+    counties.map(s => {
       let p = s.properties;
-      let boundaryId = `state-${p.STUSPS.toLowerCase()}`;
-      let boundaryVersionId = `modern-${boundaryId}`;
+      // FIPS is provided, but Minnesota ID is FIPS + 1 / 2
+      let fips = p.COUNTYFIPS;
+      let numfips = parseInt(fips, 10);
+      let mnId = (numfips + 1) * 2;
+      let boundaryId = `mn-county-${fips}`;
+      // Date from source web page
+      let boundaryVersionId = `2013-${boundaryId}`;
 
       // Create general boundary if needed
       return db
@@ -111,13 +124,15 @@ function importStates({ states, db, transaction, models, source }) {
           defaults: {
             id: boundaryId,
             name: boundaryId,
-            title: p.NAME,
-            localId: p.STUSPS,
-            parent_id: 'usa',
-            division_id: 'state',
+            title: p.COUNTYNAME,
+            localId: mnId,
+            parent_id: 'state-mn',
+            division_id: 'county',
             sourceData: {
               [source.get('id')]: {
-                about: 'Civix importer, see specific version for original data.'
+                about:
+                  'Civix importer, see specific version for original data.',
+                url: 'https://gisdata.mn.gov/dataset/bdry-counties-in-minnesota'
               }
             }
           }
@@ -131,11 +146,10 @@ function importStates({ states, db, transaction, models, source }) {
             defaults: {
               id: boundaryVersionId,
               name: boundaryVersionId,
-              localId: p.STUSPS,
-              fips: p.STATEFP,
-              // Random date that is far enough back to include our probable
-              // data set
-              start: new Date('1980-01-01'),
+              localId: mnId,
+              fips: fips,
+              // From website
+              start: new Date('2013-07-01'),
               end: null,
               geometry: s.geometry,
               boundary_id: b[0].get('id'),
@@ -143,7 +157,7 @@ function importStates({ states, db, transaction, models, source }) {
                 [source.get('id')]: {
                   properties: p,
                   url:
-                    'https://www.census.gov/cgi-bin/geo/shapefiles/index.php?year=2017&layergroup=States+%28and+equivalent%29'
+                    'https://gisdata.mn.gov/dataset/bdry-counties-in-minnesota'
                 }
               }
             }
