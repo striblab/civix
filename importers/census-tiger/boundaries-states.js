@@ -8,6 +8,7 @@
 const _ = require('lodash');
 const path = require('path');
 const shapefile = require('shapefile');
+const reproject = require('reproject');
 const ensureTigerSource = require('./source-census-tiger-lines.js');
 
 // Import function
@@ -26,8 +27,16 @@ module.exports = async function coreDataDivisionsImporter({
       return ensureTigerSource({ models, transaction: t }).then(tigerSource => {
         updates = updates.concat([tigerSource]);
 
-        getShapes().then(states => {
-          console.log(states);
+        return getShapes().then(states => {
+          return importStates({
+            states,
+            db,
+            transaction: t,
+            models,
+            source: tigerSource[0]
+          }).then(results => {
+            updates = updates.concat(results);
+          });
         });
       });
     })
@@ -63,71 +72,81 @@ function getShapes() {
         )
       )
       .then(source =>
-        source.read().then(function log(result) {
+        source.read().then(function collect(result) {
           if (result.done) {
             return resolve(collected);
           }
-          collected.push(result.value);
-          return source.read().then(log);
+          // Reproject and add CRS
+          let r = reproject.reproject(result.value, 'EPSG:4269', 'EPSG:4326');
+          r.geometry.crs = { type: 'name', properties: { name: 'EPSG:4326' } };
+
+          // Needs to be MultiPolygon
+          if (r.geometry.type === 'Polygon') {
+            r.geometry.type = 'MultiPolygon';
+            r.geometry.coordinates = [r.geometry.coordinates];
+          }
+
+          collected.push(r);
+          return source.read().then(collect);
         })
       )
       .catch(reject);
   });
 }
 
-// // Create top level boundary
-// return models.Boundary.findOrCreate({
-//   where: { id: 'usa' },
-//   transaction: t,
-//   include,
-//   defaults: {
-//     id: 'usa',
-//     name: 'usa',
-//     title: 'United States of America',
-//     sort: 'united states of america',
-//     division_id: 'country',
-//     source_data: [
-//       {
-//         id: 'core-data-boundary-country-usa',
-//         data: {
-//           manual: true
-//         },
-//         source_id: source[0].dataValues.id
-//       }
-//     ]
-//   }
-// }).then(results => {
-//   updates = updates.concat([results]);
+// Import states
+function importStates({ states, db, transaction, models, source }) {
+  return Promise.all(
+    states.map(s => {
+      let p = s.properties;
+      let boundaryId = `state-${p.STUSPS}`;
+      let boundaryVersionId = `modern-state-${p.STUSPS}`;
 
-//   // Make sure we have core boundary
-//   if (!results[0]) {
-//     throw new Error('Unable to find core boundary.');
-//   }
-
-//   // Add Boundary version record
-//   return models.BoundaryVersion.findOrCreate({
-//     where: { id: 'modern-usa' },
-//     transaction: t,
-//     include,
-//     defaults: {
-//       id: 'modern-usa',
-//       name: 'modern-usa',
-//       boundary_id: 'usa',
-//       localId: null,
-//       fips: null,
-//       start: new Date('1959-08-21'),
-//       end: null,
-//       source_data: [
-//         {
-//           id: 'core-data-boundary-country-usa-modern',
-//           data: {
-//             manual: true
-//           },
-//           source_id: source[0].dataValues.id
-//         }
-//       ]
-//     }
-//   }).then(results => {
-//     updates = updates.concat([results]);
-//   });
-// });
+      // Create general boundary if needed
+      return db
+        .findOrCreateOne(models.Boundary, {
+          transaction,
+          where: { id: boundaryId },
+          include: models.Boundary.__associations,
+          defaults: {
+            id: boundaryId,
+            name: boundaryId,
+            title: p.NAME,
+            localId: p.STUSPS,
+            parent_id: 'usa',
+            division_id: 'state',
+            sourceData: {
+              [source.get('id')]: {
+                about: 'Civix importer, see specific version for original data.'
+              }
+            }
+          }
+        })
+        .then(b => {
+          // Create specific version boundary
+          return db.findOrCreateOne(models.BoundaryVersion, {
+            transaction,
+            where: { id: boundaryVersionId },
+            include: models.BoundaryVersion.__associations,
+            defaults: {
+              id: boundaryVersionId,
+              name: boundaryVersionId,
+              localId: p.STUSPS,
+              fips: p.STATEFP,
+              // Random date that is far enough back to include our probable
+              // data set
+              start: new Date('1980-01-01'),
+              end: null,
+              geometry: s.geometry,
+              boundary_id: b[0].get('id'),
+              sourceData: {
+                [source.get('id')]: {
+                  properties: p
+                }
+              }
+            }
+          });
+        });
+    })
+  );
+}

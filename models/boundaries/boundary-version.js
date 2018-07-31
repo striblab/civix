@@ -48,7 +48,7 @@ module.exports = db => {
           geometry: {
             // Geometry is a bit simpiler, and we don't intended to do
             // serious mesasurements, so we don't use geography type.
-            type: Sequelize.GEOMETRY('POLYGON', 4326),
+            type: Sequelize.GEOMETRY('MULTIPOLYGON', 4326),
             description: 'The geospatial boundary.'
           }
         })
