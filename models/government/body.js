@@ -12,17 +12,23 @@ const utils = require('../model-utils.js');
 module.exports = db => {
   let model = db.define(
     'body',
-    utils.snakeCaseFields(utils.extendWithNotes(utils.extendWithNames({}))),
-    {
-      underscored: true,
-      indexes: utils.snakeCaseIndexes(utils.addNameIndexes([]))
-    }
+    utils.snakeCaseFields(
+      utils.extendWithSourceData(
+        utils.extendWithNotes(utils.extendWithNames({}))
+      ),
+      {
+        underscored: true,
+        indexes: utils.snakeCaseIndexes(utils.addNameIndexes([]))
+      }
+    )
   );
 
   // Associate
-  model.associate = function({ SourceData }) {
+  model.associate = function({ Source }) {
+    this.__associations = [];
+
     // Add source fields
-    utils.extendWithSources(this, SourceData);
+    utils.extendWithSources(this, Source);
   };
 
   return model;

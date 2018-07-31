@@ -15,20 +15,22 @@ module.exports = db => {
   let model = db.define(
     'election',
     utils.snakeCaseFields(
-      utils.extendWithNotes(
-        utils.extendWithNames({
-          date: {
-            type: Sequelize.DATEONLY(),
-            description: 'The date of the election',
-            allowNull: false
-          },
-          type: {
-            type: Sequelize.ENUM('general', 'primary', 'special'),
-            description: 'The type of the election.',
-            defaultValue: 'general',
-            allowNull: false
-          }
-        })
+      utils.extendWithSourceData(
+        utils.extendWithNotes(
+          utils.extendWithNames({
+            date: {
+              type: Sequelize.DATEONLY(),
+              description: 'The date of the election',
+              allowNull: false
+            },
+            type: {
+              type: Sequelize.ENUM('general', 'primary', 'special'),
+              description: 'The type of the election.',
+              defaultValue: 'general',
+              allowNull: false
+            }
+          })
+        )
       )
     ),
     {
@@ -44,14 +46,18 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Boundary, SourceData }) {
-    // Election has a boundary, most likely this is just the state
-    this.belongsTo(Boundary, {
-      foreignKey: { allowNull: false }
-    });
+  model.associate = function({ BoundaryVersion, Source }) {
+    this.__associations = [];
+
+    // Election has a boundary
+    this.__associations.push(
+      this.belongsTo(BoundaryVersion, {
+        foreignKey: { allowNull: false }
+      })
+    );
 
     // Add source fields
-    utils.extendWithSources(this, SourceData);
+    utils.extendWithSources(this, Source);
   };
 
   return model;

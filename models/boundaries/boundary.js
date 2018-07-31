@@ -13,13 +13,15 @@ module.exports = db => {
   let model = db.define(
     'boundary',
     utils.snakeCaseFields(
-      utils.extendWithNotes(
-        utils.extendWithNames({
-          localId: {
-            type: Sequelize.STRING(128),
-            description: 'ID used by local administration.'
-          }
-        })
+      utils.extendWithSourceData(
+        utils.extendWithNotes(
+          utils.extendWithNames({
+            localId: {
+              type: Sequelize.STRING(128),
+              description: 'ID used by local administration.'
+            }
+          })
+        )
       )
     ),
     {
@@ -31,17 +33,21 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Division, SourceData }) {
+  model.associate = function({ Division, Source }) {
+    this.__associations = [];
+
     // Parent to another boundary
-    this.belongsTo(this, { as: 'parent' });
+    this.__associations.push(this.belongsTo(this, { as: 'parent' }));
 
     // Boundary has a division
-    this.belongsTo(Division, {
-      foreignKey: { allowNull: false }
-    });
+    this.__associations.push(
+      this.belongsTo(Division, {
+        foreignKey: { allowNull: false }
+      })
+    );
 
     // Add source fields
-    utils.extendWithSources(this, SourceData);
+    utils.extendWithSources(this, Source);
   };
 
   return model;

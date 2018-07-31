@@ -13,28 +13,30 @@ module.exports = db => {
   let model = db.define(
     'results',
     utils.snakeCaseFields(
-      utils.extendWithNotes({
-        id: {
-          type: Sequelize.STRING(128),
-          primaryKey: true,
-          description: 'The string ID.'
-        },
-        units: {
-          type: Sequelize.ENUM('votes', 'electoral-votes', 'other'),
-          description: 'The type of units these results describe.',
-          allowNull: false,
-          defaultValue: 'votes'
-        },
-        votes: {
-          type: Sequelize.INTEGER(),
-          description: 'The total number of votes cast for this candidate.'
-        },
-        percent: {
-          type: Sequelize.DECIMAL(),
-          description:
-            'The between-0-and-1 percent of votes for this candidate.'
-        }
-      })
+      utils.extendWithSourceData(
+        utils.extendWithNotes({
+          id: {
+            type: Sequelize.STRING(128),
+            primaryKey: true,
+            description: 'The string ID.'
+          },
+          units: {
+            type: Sequelize.ENUM('votes', 'electoral-votes', 'other'),
+            description: 'The type of units these results describe.',
+            allowNull: false,
+            defaultValue: 'votes'
+          },
+          votes: {
+            type: Sequelize.INTEGER(),
+            description: 'The total number of votes cast for this candidate.'
+          },
+          percent: {
+            type: Sequelize.DECIMAL(),
+            description:
+              'The between-0-and-1 percent of votes for this candidate.'
+          }
+        })
+      )
     ),
     {
       underscored: true,
@@ -52,24 +54,30 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Contest, Candidate, Boundary, SourceData }) {
+  model.associate = function({ Contest, Candidate, BoundaryVersion, Source }) {
+    this.__associations = [];
+
     // A result is tied to a contest
-    this.belongsTo(Contest, {
-      foreignKey: { allowNull: false }
-    });
+    this.__associations.push(
+      this.belongsTo(Contest, {
+        foreignKey: { allowNull: false }
+      })
+    );
 
     // A results is tied to a candidate
-    this.belongsTo(Candidate, {
-      foreignKey: { allowNull: false }
-    });
+    this.__associations.push(
+      this.belongsTo(Candidate, {
+        foreignKey: { allowNull: false }
+      })
+    );
 
     // A results can be a subresult of of other and tied to a specific
     // boundary
-    this.belongsTo(this, { as: 'parent' });
-    this.belongsTo(Boundary);
+    this.__associations.push(this.belongsTo(this, { as: 'parent' }));
+    this.__associations.push(this.belongsTo(BoundaryVersion));
 
     // Add source fields
-    utils.extendWithSources(this, SourceData);
+    utils.extendWithSources(this, Source);
   };
 
   return model;

@@ -17,17 +17,6 @@ module.exports = async function coreDataDivisionsImporter({
   logger('info', 'Core data: Boundary: USA importer...');
   let updates = [];
 
-  // Common include for source data
-  const include = [
-    {
-      model: models.SourceData,
-      as: 'source_data',
-      include: {
-        model: models.Source
-      }
-    }
-  ];
-
   // Wrap in transaction
   return db.sequelize
     .transaction({}, t => {
@@ -39,22 +28,18 @@ module.exports = async function coreDataDivisionsImporter({
         return models.Boundary.findOrCreate({
           where: { id: 'usa' },
           transaction: t,
-          include,
+          include: models.Boundary__associations,
           defaults: {
             id: 'usa',
             name: 'usa',
             title: 'United States of America',
             sort: 'united states of america',
             division_id: 'country',
-            source_data: [
-              {
-                id: 'core-data-boundary-country-usa',
-                data: {
-                  manual: true
-                },
-                source_id: source[0].dataValues.id
+            sourceData: {
+              [source[0].get('id')]: {
+                manual: true
               }
-            ]
+            }
           }
         }).then(results => {
           updates = updates.concat([results]);
@@ -68,7 +53,7 @@ module.exports = async function coreDataDivisionsImporter({
           return models.BoundaryVersion.findOrCreate({
             where: { id: 'modern-usa' },
             transaction: t,
-            include,
+            include: models.BoundaryVersion.__associations,
             defaults: {
               id: 'modern-usa',
               name: 'modern-usa',
@@ -77,15 +62,11 @@ module.exports = async function coreDataDivisionsImporter({
               fips: null,
               start: new Date('1959-08-21'),
               end: null,
-              source_data: [
-                {
-                  id: 'core-data-boundary-country-usa-modern',
-                  data: {
-                    manual: true
-                  },
-                  source_id: source[0].dataValues.id
+              sourceData: {
+                [source[0].get('id')]: {
+                  manual: true
                 }
-              ]
+              }
             }
           }).then(results => {
             updates = updates.concat([results]);

@@ -12,7 +12,11 @@ const utils = require('../model-utils.js');
 module.exports = db => {
   let model = db.define(
     'division',
-    utils.snakeCaseFields(utils.extendWithNotes(utils.extendWithNames({}))),
+    utils.snakeCaseFields(
+      utils.extendWithSourceData(
+        utils.extendWithNotes(utils.extendWithNames({}))
+      )
+    ),
     {
       underscored: true,
       indexes: utils.snakeCaseIndexes(utils.addNameIndexes([]))
@@ -20,12 +24,14 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ SourceData }) {
+  model.associate = function({ Source }) {
+    this.__associations = [];
+
     // Parent to a jurisdiction
-    this.belongsTo(this, { as: 'parent' });
+    this.__associations.push(this.belongsTo(this, { as: 'parent' }));
 
     // Add source fields
-    utils.extendWithSources(this, SourceData);
+    utils.extendWithSources(this, Source);
   };
 
   return model;

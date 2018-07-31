@@ -44,6 +44,18 @@ function extendWithNames(fields = {}) {
   );
 }
 
+// Extend with source data
+function extendWithSourceData(fields = {}) {
+  return _.extend(fields, {
+    sourceData: {
+      type: Sequelize.JSON(),
+      description:
+        'General place to put original source information.  Ideally, use the Source ID as the key in the JSON.',
+      allowNull: false
+    }
+  });
+}
+
 // Add indexes for name
 function addNameIndexes(indexes = []) {
   return indexes.concat([
@@ -68,14 +80,19 @@ function extendWithNotes(fields = {}) {
 }
 
 // Extend with source
-function extendWithSources(model, SourceData) {
-  // Allow a model to have multiple source data, and each
-  // source data points to a source as well
-  model.belongsToMany(SourceData, {
-    through: `${model.options.name.plural}_source_data`,
-    underscored: true
-  });
+function extendWithSources(model, Source) {
+  // !!! Can;t seem to get m-m include/associations to work
+  // with findOrCreate so, giving up on this for
+  // now.
   return model;
+
+  // // Allow a model to have multiple sources
+  // model.belongsToMany(Source, {
+  //   as: 'sources',
+  //   through: `${model.options.name.plural}_sources`,
+  //   underscored: true
+  // });
+  // return model;
 }
 
 // Sequelize doesn't seem to use the field name for a field in indexes
@@ -91,6 +108,7 @@ function snakeCaseIndexes(indexes = []) {
 // Export
 module.exports = {
   extendWithNames,
+  extendWithSourceData,
   addNameIndexes,
   extendWithNotes,
   extendWithSources,
