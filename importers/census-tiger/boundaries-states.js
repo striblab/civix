@@ -6,7 +6,8 @@
 
 // Dependencies
 const _ = require('lodash');
-const ensureManualSource = require('./source-manual.js');
+const path = require('path');
+const shapefile = require('shapefile');
 const ensureTigerSource = require('./source-census-tiger-lines.js');
 
 // Import function
@@ -18,31 +19,17 @@ module.exports = async function coreDataDivisionsImporter({
   logger('info', 'Core data: Boundary: States importer...');
   let updates = [];
 
-  // Common include for source data
-  const include = [
-    {
-      model: models.SourceData,
-      as: 'source_data',
-      include: {
-        model: models.Source
-      }
-    }
-  ];
-
   // Wrap in transaction
   return db.sequelize
     .transaction({}, t => {
       // Start promise chain
-      return ensureManualSource({ models, transaction: t }).then(
-        manualSource => {
-          updates = updates.concat([manualSource]);
-          return ensureTigerSource({ models, transaction: t }).then(
-            tigerSource => {
-              updates = updates.concat([tigerSource]);
-            }
-          );
-        }
-      );
+      return ensureTigerSource({ models, transaction: t }).then(tigerSource => {
+        updates = updates.concat([tigerSource]);
+
+        getShapes().then(states => {
+          console.log(states);
+        });
+      });
     })
     .then(results => {
       updates.forEach(u => {
@@ -59,6 +46,34 @@ module.exports = async function coreDataDivisionsImporter({
       logger('error', error.stack ? error.stack : error);
     });
 };
+
+// Get shapes
+function getShapes() {
+  return new Promise((resolve, reject) => {
+    let collected = [];
+
+    shapefile
+      .open(
+        path.join(
+          __dirname,
+          'data',
+          'boundaries-states',
+          'tl_2017_us_state',
+          'tl_2017_us_state.shp'
+        )
+      )
+      .then(source =>
+        source.read().then(function log(result) {
+          if (result.done) {
+            return resolve(collected);
+          }
+          collected.push(result.value);
+          return source.read().then(log);
+        })
+      )
+      .catch(reject);
+  });
+}
 
 // // Create top level boundary
 // return models.Boundary.findOrCreate({

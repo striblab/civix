@@ -39,7 +39,7 @@ module.exports = db => {
         utils.addNameIndexes([
           { fields: ['date'] },
           { fields: ['type'] },
-          { unique: true, fields: ['date', 'type', 'BoundaryId'] }
+          { unique: true, fields: ['date', 'type', 'BoundaryVersionId'] }
         ])
       )
     }

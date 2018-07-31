@@ -47,7 +47,7 @@ module.exports = db => {
         {
           unique: true,
           // The combination of foreign keys needs to be unique
-          fields: ['ContestId', 'CandidateId', 'ParentId', 'BoundaryId']
+          fields: ['ContestId', 'CandidateId', 'ParentId', 'BoundaryVersionId']
         }
       ])
     }
