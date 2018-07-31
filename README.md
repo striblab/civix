@@ -21,3 +21,5 @@ Inspiration taken from [Politico's civic](https://github.com/The-Politico/politi
 ## Configuration
 
 - `CIVIC_LOGS`: Path to where logs, defaults to `.logs` in the current working directory.
+- `CIVIX_DEBUG`: Turn on debugging
+- `CIVIX_DATABASE_URI`: Database URI
