@@ -62,16 +62,16 @@ module.exports = async function coreDataElexRacesImporter({
     let election = electionResult[0];
 
     // Import candidates
-    // results = results.concat(
-    //   await importContests({
-    //     races,
-    //     db,
-    //     transaction,
-    //     models,
-    //     source,
-    //     election
-    //   })
-    // );
+    results = results.concat(
+      await importCandidates({
+        candidates,
+        db,
+        transaction,
+        models,
+        source,
+        election
+      })
+    );
 
     // Log changes
     _.filter(
@@ -95,3 +95,99 @@ module.exports = async function coreDataElexRacesImporter({
     logger('error', error.stack ? error.stack : error);
   }
 };
+
+// Import candidates
+async function importCandidates({
+  candidates,
+  db,
+  transaction,
+  models,
+  source,
+  election
+}) {
+  let results = [];
+
+  for (let candidate of candidates) {
+    results = results.concat(
+      await importCandidate({
+        election,
+        candidate,
+        db,
+        models,
+        transaction,
+        source
+      })
+    );
+  }
+
+  return results;
+}
+
+// Import single candidate
+async function importCandidate({
+  election,
+  candidate,
+  db,
+  models,
+  transaction,
+  source
+}) {
+  let original = _.cloneDeep(candidate);
+
+  // Get party
+  let party = await models.Party.findOne({
+    where: { apId: candidate.party.toLowerCase() },
+    transaction
+  });
+
+  // Assume unknown party is non-partisan
+  if (!party) {
+    party = await models.Party.findOne({
+      where: { id: 'np' },
+      transaction
+    });
+  }
+
+  // Create candidate record
+  let candidateRecord = {
+    id: db.makeIdentifier([
+      election.get('id'),
+      candidate.candidateid,
+      candidate.last
+    ]),
+    name: db.makeIdentifier([
+      election.get('id'),
+      candidate.candidateid,
+      candidate.last
+    ]),
+    party_id: party.get('id'),
+    apId: candidate.candidateid,
+    apIdHistory: { [election.get('id')]: candidate.candidateid },
+    first: candidate.first,
+    last: candidate.last,
+    fullName: _
+      .filter([candidate.first, candidate.last])
+      .join(' ')
+      .trim(),
+    // TODO
+    shortName: undefined,
+    sort: _
+      .filter([candidate.last, candidate.first])
+      .join(', ')
+      .trim()
+      .toLowerCase(),
+    sourceData: {
+      [source.get('id')]: {
+        data: original
+      }
+    }
+  };
+
+  return [
+    await db.findOrCreateOne(models.Candidate, {
+      where: { id: candidateRecord.id },
+      defaults: candidateRecord,
+      transaction
+    })
+  ];
+}

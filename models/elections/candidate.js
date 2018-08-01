@@ -28,6 +28,24 @@ module.exports = db => {
             allowNull: false,
             unique: true
           },
+          apId: {
+            type: Sequelize.STRING(128),
+            description:
+              'ID used by the Associated Press; note that the AP does not maintain unique IDs across elections, so this should be the most recent .'
+          },
+          apIdHistory: {
+            type: Sequelize.JSON(),
+            description: 'Array of past AP IDs.'
+          },
+          localId: {
+            type: Sequelize.STRING(128),
+            description:
+              'ID used by the local election officials or generated from.  This should be the most recent.'
+          },
+          localIdHistory: {
+            type: Sequelize.JSON(),
+            description: 'Array of past local IDs.'
+          },
           first: {
             type: Sequelize.STRING(256),
             description: 'The candidates first name.',
@@ -40,18 +58,15 @@ module.exports = db => {
           },
           middle: {
             type: Sequelize.STRING(256),
-            description: 'The candidates middle name.',
-            allowNull: false
+            description: 'The candidates middle name.'
           },
           prefix: {
             type: Sequelize.STRING(256),
-            description: 'Prefix for candidate.',
-            allowNull: false
+            description: 'Prefix for candidate.'
           },
           suffix: {
             type: Sequelize.STRING(256),
-            description: 'Suffix for candidate.',
-            allowNull: false
+            description: 'Suffix for candidate.'
           },
           fullName: {
             type: Sequelize.STRING(256),
