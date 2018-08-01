@@ -14,6 +14,10 @@ module.exports = db => {
       utils.extendWithSourceData(
         utils.extendWithNotes(
           utils.extendWithNames({
+            apId: {
+              type: Sequelize.STRING(32),
+              description: 'The AP code for the party.'
+            },
             abbreviation: {
               type: Sequelize.STRING(32),
               description: 'The abbreviation used by the party.'
@@ -25,7 +29,10 @@ module.exports = db => {
     {
       underscored: true,
       indexes: utils.snakeCaseIndexes(
-        utils.addNameIndexes([{ fields: ['abbreviation'] }])
+        utils.addNameIndexes([
+          { fields: ['apId'] },
+          { fields: ['abbreviation'] }
+        ])
       )
     }
   );

@@ -22,7 +22,7 @@ module.exports = db => {
               type: Sequelize.STRING(128),
               description: 'ID used by local administration, likely the state.'
             },
-            apID: {
+            apId: {
               type: Sequelize.STRING(128),
               description: 'ID used by the Associated Press.'
             },
@@ -32,9 +32,15 @@ module.exports = db => {
                 'The type of the election for this specific contest; overriding the election value.',
               allowNull: true
             },
-            seats: {
+            special: {
+              type: Sequelize.BOOLEAN(),
+              description: 'Whether this contest is "special".',
+              allowNull: false,
+              defaultValue: false
+            },
+            elect: {
               type: Sequelize.INTEGER(),
-              description: 'The number of seats being elected.',
+              description: 'The number of candidates being elected or chosen.',
               allowNull: false,
               defaultValue: 1
             },
@@ -102,7 +108,7 @@ module.exports = db => {
         utils.addNameIndexes([
           { fields: ['localId'] },
           { fields: ['apId'] },
-          { fields: ['seats'] },
+          { fields: ['elect'] },
           { fields: ['uncontested'] },
           { fields: ['partisan'] },
           { fields: ['question'] },

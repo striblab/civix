@@ -17,7 +17,7 @@ const epsg = require('../../lib/epsg.js');
 const ensureMNGeoSource = require('./source-mn-geo-commons.js');
 
 // Import function
-module.exports = async function coreDataDivisionsImporter({
+module.exports = async function coreDataMNCountiesImporter({
   logger,
   models,
   db

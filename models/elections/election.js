@@ -39,19 +39,19 @@ module.exports = db => {
         utils.addNameIndexes([
           { fields: ['date'] },
           { fields: ['type'] },
-          { unique: true, fields: ['date', 'type', 'BoundaryVersionId'] }
+          { unique: true, fields: ['date', 'type', 'BoundaryId'] }
         ])
       )
     }
   );
 
   // Associate
-  model.associate = function({ BoundaryVersion, Source }) {
+  model.associate = function({ Boundary, Source }) {
     this.__associations = [];
 
     // Election has a boundary
     this.__associations.push(
-      this.belongsTo(BoundaryVersion, {
+      this.belongsTo(Boundary, {
         foreignKey: { allowNull: false }
       })
     );

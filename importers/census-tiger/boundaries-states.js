@@ -12,7 +12,7 @@ const reproject = require('reproject');
 const ensureTigerSource = require('./source-census-tiger-lines.js');
 
 // Import function
-module.exports = async function coreDataDivisionsImporter({
+module.exports = async function coreDataTigerStatesImporter({
   logger,
   models,
   db

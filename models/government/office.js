@@ -26,7 +26,9 @@ module.exports = db => {
     ),
     {
       underscored: true,
-      indexes: utils.snakeCaseIndexes(utils.addNameIndexes([]))
+      indexes: utils.snakeCaseIndexes(
+        utils.addNameIndexes([{ fields: ['seatName'] }])
+      )
     }
   );
 
@@ -44,14 +46,14 @@ module.exports = db => {
     // Possibly tied to a body
     this.__associations.push(this.belongsTo(Body));
 
-    // An office has many elections
-    this.__associations.push(
-      this.belongsToMany(Election, {
-        through: 'offices_elections',
-        underscore: true,
-        foreignKey: { allowNull: false }
-      })
-    );
+    // // An office has many elections
+    // this.__associations.push(
+    //   this.belongsToMany(Election, {
+    //     through: 'offices_elections',
+    //     underscore: true,
+    //     foreignKey: { allowNull: false }
+    //   })
+    // );
 
     // Add source fields
     utils.extendWithSources(this, Source);

@@ -9,7 +9,7 @@ const _ = require('lodash');
 const ensureManualSource = require('./source-manual.js');
 
 // Import function
-module.exports = async function coreDataDivisionsImporter({
+module.exports = async function coreDataCountryImporter({
   logger,
   models,
   db

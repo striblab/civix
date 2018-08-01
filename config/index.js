@@ -15,5 +15,6 @@ module.exports = {
   debug: process.env.CIVIX_DEBUG || true,
   databaseURI: process.env.CIVIX_DATABASE_URI,
   logPath: process.env.CIVIX_LOG_PATH || path.join(process.cwd(), '.logs'),
-  cachePath: process.env.CIVIX_CACHE_PATH || path.join(process.cwd(), '.cache')
+  cachePath: process.env.CIVIX_CACHE_PATH || path.join(process.cwd(), '.cache'),
+  apAPIKey: process.env.AP_API_KEY
 };
