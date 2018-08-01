@@ -1,11 +1,12 @@
 /**
- * Get candidates from AP
+ * Get results from AP.  This updates existing data.
  */
 
 // Dependencies
 const _ = require('lodash');
 const Elex = require('../../lib/elex.js').Elex;
 const ensureElexSource = require('./source-ap-elex.js');
+const debug = require('debug')('civix:importer:ap-results');
 
 // Import function
 module.exports = async function coreDataElexRacesImporter({
@@ -13,7 +14,7 @@ module.exports = async function coreDataElexRacesImporter({
   models,
   db
 }) {
-  logger('info', 'AP (via Elex) Candidates importer...');
+  logger('info', 'AP (via Elex) Results importer...');
   let updates = [];
 
   // Election information
@@ -37,7 +38,7 @@ module.exports = async function coreDataElexRacesImporter({
 
   // Get elex candidates (via results)
   const elex = new Elex({ logger, defaultElection: electionString });
-  const candidates = await elex.results();
+  const electionResults = await elex.results();
 
   // Create transaction
   const transaction = await db.sequelize.transaction();
@@ -53,18 +54,18 @@ module.exports = async function coreDataElexRacesImporter({
     let source = sourceResult[0];
 
     // Create election
-    let electionResult = await db.findOrCreateOne(models.Election, {
+    let electionRecordResults = await db.findOrCreateOne(models.Election, {
       where: { id: electionRecord.id },
       defaults: electionRecord,
       transaction
     });
-    results.push(electionResult);
-    let election = electionResult[0];
+    results.push(electionRecordResults);
+    let election = electionRecordResults[0];
 
-    // Import candidates
+    // Import results
     results = results.concat(
-      await importCandidates({
-        candidates,
+      await importResults({
+        electionResults,
         db,
         transaction,
         models,
@@ -74,16 +75,18 @@ module.exports = async function coreDataElexRacesImporter({
     );
 
     // Log changes
-    _.filter(
-      results.forEach(u => {
-        logger(
-          'info',
-          `[${u[0].constructor.name}] ${u[1] ? 'Created' : 'Existed'}: ${
-            u[0].dataValues.id
-          }`
-        );
-      })
-    );
+    _.filter(results).forEach(u => {
+      if (!u || !u[0]) {
+        return;
+      }
+
+      logger(
+        'info',
+        `[${u[0].constructor.name}] ${u[1] ? 'Created' : 'Existed'}: ${
+          u[0].dataValues.id
+        }`
+      );
+    });
 
     // Commit
     transaction.commit();
@@ -97,8 +100,8 @@ module.exports = async function coreDataElexRacesImporter({
 };
 
 // Import candidates
-async function importCandidates({
-  candidates,
+async function importResults({
+  electionResults,
   db,
   transaction,
   models,
@@ -107,11 +110,11 @@ async function importCandidates({
 }) {
   let results = [];
 
-  for (let candidate of candidates) {
+  for (let result of electionResults) {
     results = results.concat(
-      await importCandidate({
+      await importResult({
         election,
-        candidate,
+        result,
         db,
         models,
         transaction,
@@ -124,19 +127,26 @@ async function importCandidates({
 }
 
 // Import single candidate
-async function importCandidate({
+async function importResult({
   election,
-  candidate,
+  result,
   db,
   models,
   transaction,
   source
 }) {
-  let original = _.cloneDeep(candidate);
+  let original = _.cloneDeep(result);
+  let results = [];
+
+  // Unsure best way to only find top level results, but
+  // this seems to work
+  if (result.level !== 'state') {
+    return [];
+  }
 
   // Get party
   let party = await models.Party.findOne({
-    where: { apId: candidate.party.toLowerCase() },
+    where: { apId: result.party.toLowerCase() },
     transaction
   });
 
@@ -148,46 +158,68 @@ async function importCandidate({
     });
   }
 
+  // Get candidate record
+  let candidate = await models.Candidate.findOne({
+    where: { apId: result.candidateid },
+    transaction
+  });
+  if (!candidate) {
+    debug(result);
+    throw new Error(`Unable to find candidate: ${result.candidateid}`);
+  }
+
+  // Get contest record
+  let contest = await models.Contest.findOne({
+    where: { apId: result.raceid, election_id: election.get('id') },
+    transaction
+  });
+  // There are some candidate results that are not in the results
+  // set, but it seems to only be uncontested.
+  if (!contest && !result.uncontested) {
+    debug(result);
+    throw new Error(`Unable to find contest: ${result.candidateid}`);
+  }
+  if (!contest) {
+    return [];
+  }
+
   // Create candidate record
-  let candidateRecord = {
-    id: db.makeIdentifier([
-      election.get('id'),
-      candidate.candidateid,
-      candidate.last
-    ]),
-    name: db.makeIdentifier([
-      election.get('id'),
-      candidate.candidateid,
-      candidate.last
-    ]),
-    party_id: party.get('id'),
-    apId: candidate.candidateid,
-    apIdHistory: { [election.get('id')]: candidate.candidateid },
-    first: candidate.first,
-    last: candidate.last,
-    fullName: _
-      .filter([candidate.first, candidate.last])
-      .join(' ')
-      .trim(),
-    // TODO
-    shortName: undefined,
-    sort: _
-      .filter([candidate.last, candidate.first])
-      .join(', ')
-      .trim()
-      .toLowerCase(),
+  let resultRecord = {
+    id: db.makeIdentifier([contest.get('id'), result.candidateid, result.last]),
+    contest_id: contest.get('id'),
+    candidate_id: candidate.get('id'),
+    apId: result.id,
+    units: undefined,
+    votes: result.votecount,
+    percent: result.votepct,
+    winner: result.winner,
+    test: result.test,
     sourceData: {
       [source.get('id')]: {
         data: original
       }
     }
   };
-
-  return [
-    await db.findOrCreateOne(models.Candidate, {
-      where: { id: candidateRecord.id },
-      defaults: candidateRecord,
+  results.push(
+    await db.updateOrCreateOne(models.Result, {
+      where: { id: resultRecord.id },
+      defaults: resultRecord,
+      pick: ['votes', 'percent'],
       transaction
     })
-  ];
+  );
+
+  // Update contest
+  results.push([
+    await contest.update(
+      {
+        reporting: result.i,
+        totalPrecincts: result.i
+      },
+      { transaction }
+    ),
+    false
+  ]);
+
+  return results;
 }

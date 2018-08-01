@@ -13,7 +13,7 @@ module.exports = async function coreDataElexRacesImporter({
   models,
   db
 }) {
-  logger('info', 'Core data: Boundary: Elex Races importer...');
+  logger('info', 'AP (via Elex) Races importer...');
   let updates = [];
 
   // Election information

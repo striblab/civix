@@ -18,6 +18,7 @@
   "homepage": "https://github.com/striblab/civix#readme",
   "dependencies": {
     "command-exists": "^1.2.7",
+    "debug": "^3.1.0",
     "dotenv": "^6.0.0",
     "fs-extra": "^6.0.1",
     "glob": "^7.1.2",

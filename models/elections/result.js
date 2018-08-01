@@ -20,6 +20,15 @@ module.exports = db => {
             primaryKey: true,
             description: 'The string ID.'
           },
+          apId: {
+            type: Sequelize.STRING(128),
+            description: 'ID used by the Associated Press.'
+          },
+          localId: {
+            type: Sequelize.STRING(128),
+            description:
+              'ID used by the local election officials or generated from.'
+          },
           units: {
             type: Sequelize.ENUM('votes', 'electoral-votes', 'other'),
             description: 'The type of units these results describe.',
@@ -34,6 +43,16 @@ module.exports = db => {
             type: Sequelize.DECIMAL(),
             description:
               'The between-0-and-1 percent of votes for this candidate.'
+          },
+          winner: {
+            type: Sequelize.BOOLEAN(),
+            description: 'Whether this candidate is a winner.',
+            defaultValue: false
+          },
+          test: {
+            type: Sequelize.BOOLEAN(),
+            description: 'Whether is test data.',
+            defaultValue: false
           }
         })
       )
@@ -42,6 +61,8 @@ module.exports = db => {
       underscored: true,
       indexes: utils.snakeCaseIndexes([
         { fields: ['units'] },
+        { fields: ['apId'] },
+        { fields: ['localId'] },
         { fields: ['votes'] },
         { fields: ['percent'] },
         {
