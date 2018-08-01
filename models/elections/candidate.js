@@ -28,6 +28,31 @@ module.exports = db => {
             allowNull: false,
             unique: true
           },
+          first: {
+            type: Sequelize.STRING(256),
+            description: 'The candidates first name.',
+            allowNull: false
+          },
+          last: {
+            type: Sequelize.STRING(256),
+            description: 'The candidates last name.',
+            allowNull: false
+          },
+          middle: {
+            type: Sequelize.STRING(256),
+            description: 'The candidates middle name.',
+            allowNull: false
+          },
+          prefix: {
+            type: Sequelize.STRING(256),
+            description: 'Prefix for candidate.',
+            allowNull: false
+          },
+          suffix: {
+            type: Sequelize.STRING(256),
+            description: 'Suffix for candidate.',
+            allowNull: false
+          },
           fullName: {
             type: Sequelize.STRING(256),
             description:
@@ -51,6 +76,11 @@ module.exports = db => {
       underscored: true,
       indexes: utils.snakeCaseIndexes([
         { fields: ['name'] },
+        { fields: ['first'] },
+        { fields: ['middle'] },
+        { fields: ['last'] },
+        { fields: ['prefix'] },
+        { fields: ['suffix'] },
         { fields: ['fullName'] },
         { fields: ['shortName'] },
         { fields: ['sort'] }
@@ -60,13 +90,6 @@ module.exports = db => {
 
   model.associate = function({ Party, Contest, Source }) {
     this.__associations = [];
-
-    // Each candidate belongs to a contest
-    this.__associations.push(
-      this.belongsTo(Contest, {
-        foreignKey: { allowNull: false }
-      })
-    );
 
     // Each candidate belongs to a party
     this.__associations.push(
