@@ -6,8 +6,8 @@
 
 // Export function
 module.exports = async ({ logger, config, models, db, argv }) => {
-  let contests = await models.Contest.findAll({}, { include: { all: true } });
+  let contests = await models.Contest.findAll({ include: { all: true } });
   contests.forEach(c => {
-    console.log(c);
+    console.log(c.get({ plain: true }));
   });
 };
