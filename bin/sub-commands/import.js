@@ -1,5 +1,5 @@
 /**
- * Sub command for migrations
+ * Sub command for importing
  */
 
 // Dependencies
