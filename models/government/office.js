@@ -33,7 +33,7 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Boundary, Body, Election, Source }) {
+  model.associate = function({ Boundary, Body, Contest, Source }) {
     this.__associations = [];
 
     // Tied to a boundary
@@ -46,14 +46,8 @@ module.exports = db => {
     // Possibly tied to a body
     this.__associations.push(this.belongsTo(Body));
 
-    // // An office has many elections
-    // this.__associations.push(
-    //   this.belongsToMany(Election, {
-    //     through: 'offices_elections',
-    //     underscore: true,
-    //     foreignKey: { allowNull: false }
-    //   })
-    // );
+    // Make an association back to contests
+    this.__associations.push(this.hasMany(Contest));
 
     // Add source fields
     utils.extendWithSources(this, Source);

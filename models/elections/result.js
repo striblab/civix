@@ -94,7 +94,7 @@ module.exports = db => {
 
     // A results can be a subresult of of other and tied to a specific
     // boundary
-    this.__associations.push(this.belongsTo(this, { as: 'parent' }));
+    this.__associations.push(this.belongsTo(this, { as: 'Parent' }));
     this.__associations.push(this.belongsTo(BoundaryVersion));
 
     // Add source fields

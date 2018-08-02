@@ -126,7 +126,7 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Election, Office, Party, Source }) {
+  model.associate = function({ Election, Office, Party, Source, Result }) {
     this.__associations = [];
 
     // A contest is tied to an election
@@ -150,6 +150,10 @@ module.exports = db => {
         foreignKey: { allowNull: true }
       })
     );
+
+    // Make an association to results so that we can reference them
+    // from this model
+    this.__associations.push(this.hasMany(Result));
 
     // Add source fields
     utils.extendWithSources(this, Source);
