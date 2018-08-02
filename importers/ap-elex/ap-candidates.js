@@ -134,6 +134,12 @@ async function importCandidate({
 }) {
   let original = _.cloneDeep(candidate);
 
+  // Unsure best way to only find top level results, but
+  // this seems to work
+  if (candidate.level !== 'state') {
+    return [];
+  }
+
   // Get party
   let party = await models.Party.findOne({
     where: { apId: candidate.party.toLowerCase() },
