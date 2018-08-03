@@ -23,13 +23,19 @@ const mapKeysDeep = (obj, cb) => {
 // Export function
 module.exports = async ({ logger, config, models, db, argv }) => {
   let contests = await models.Contest.findAll({
+    where: {
+      election_id: 'mn-20180814'
+    },
     include: [
       { all: true },
-      // This is needed to pick up the Candidate info
-      // for the results.
+      // More than one-level in needs to be explicitly added ?
       {
         model: models.Result,
         include: [models.Candidate]
+      },
+      {
+        model: models.Office,
+        include: [models.Body]
       }
     ]
   });
@@ -41,21 +47,21 @@ module.exports = async ({ logger, config, models, db, argv }) => {
   let simpleContests = _.map(contests, c => c.get({ plain: true }));
 
   // Create base path
-  let electionPath = path.join(argv.output, election.id);
+  let electionContestsPath = path.join(argv.output, election.id, 'contests');
   try {
-    fs.mkdirpSync(electionPath);
+    fs.mkdirpSync(electionContestsPath);
   }
   catch (e) {
-    logger('error', `Unable to create path: ${electionPath}`);
+    logger('error', `Unable to create path: ${electionContestsPath}`);
     throw e;
   }
 
   // Output all
-  let allPath = path.join(electionPath, 'all.json');
+  let allPath = path.join(electionContestsPath, 'all.json');
   fs.writeFileSync(allPath, JSON.stringify(simpleContests));
 
   // Each contest
-  let byContestPath = path.join(electionPath, 'contests');
+  let byContestPath = path.join(electionContestsPath, 'contests');
   fs.mkdirpSync(byContestPath);
   _.each(simpleContests, c => {
     fs.writeFileSync(
@@ -65,7 +71,7 @@ module.exports = async ({ logger, config, models, db, argv }) => {
   });
 
   // By body
-  let byBodyPath = path.join(electionPath, 'bodies');
+  let byBodyPath = path.join(electionContestsPath, 'by-body');
   fs.mkdirpSync(byBodyPath);
   _.each(_.groupBy(simpleContests, c => c.office.body_id), (g, gi) => {
     fs.writeFileSync(
@@ -75,7 +81,7 @@ module.exports = async ({ logger, config, models, db, argv }) => {
   });
 
   // By office
-  let byOfficePath = path.join(electionPath, 'offices');
+  let byOfficePath = path.join(electionContestsPath, 'by-office');
   fs.mkdirpSync(byOfficePath);
   _.each(_.groupBy(simpleContests, c => c.office_id), (g, gi) => {
     fs.writeFileSync(
