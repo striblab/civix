@@ -109,17 +109,37 @@ async function importResults({
 }) {
   let results = [];
 
+  // Do top-level results first
   for (let result of electionResults) {
-    results = results.concat(
-      await importResult({
-        election,
-        result,
-        db,
-        models,
-        transaction,
-        source
-      })
-    );
+    if (result.level === 'state' || result.level === null) {
+      results = results.concat(
+        await importResult({
+          election,
+          result,
+          db,
+          models,
+          transaction,
+          source
+        })
+      );
+    }
+  }
+
+  // Then do county
+  for (let result of electionResults) {
+    if (result.level === 'county') {
+      results = results.concat(
+        await importResult({
+          election,
+          result,
+          db,
+          models,
+          transaction,
+          source,
+          isCounty: true
+        })
+      );
+    }
   }
 
   return results;
@@ -132,16 +152,11 @@ async function importResult({
   db,
   models,
   transaction,
-  source
+  source,
+  isCounty
 }) {
   let original = _.cloneDeep(result);
   let results = [];
-
-  // Unsure best way to only find top level results, but
-  // this seems to work
-  if (result.level !== 'state' && result.level !== null) {
-    return [];
-  }
 
   // Get party
   let party = await models.Party.findOne({
@@ -182,11 +197,32 @@ async function importResult({
     return [];
   }
 
-  console.log(result);
+  // Make default id
+  let resultId = db.makeIdentifier([
+    contest.get('id'),
+    result.candidateid,
+    result.last
+  ]);
+  let parentId;
+  let boundaryVersionId;
 
-  // Create candidate record
+  // If county, make parent id
+  if (isCounty) {
+    parentId = resultId;
+    resultId = db.makeIdentifier([resultId, result.fipscode]);
+
+    let boundaryVersion = await models.BoundaryVersion.findOne({
+      where: { fips: result.fipscode.replace(/^27/, '') },
+      transaction
+    });
+    if (boundaryVersion) {
+      boundaryVersionId = boundaryVersion.get('id');
+    }
+  }
+
+  // Create result record
   let resultRecord = {
-    id: db.makeIdentifier([contest.get('id'), result.candidateid, result.last]),
+    id: resultId,
     contest_id: contest.get('id'),
     candidate_id: candidate.get('id'),
     apId: result.id,
@@ -196,6 +232,8 @@ async function importResult({
     percent: result.votepct,
     winner: result.winner,
     test: result.test,
+    parent_id: parentId ? parentId : undefined,
+    boundary_version_id: boundaryVersionId ? boundaryVersionId : undefined,
     sourceData: {
       [source.get('id')]: {
         data: original
@@ -206,22 +244,29 @@ async function importResult({
     await db.updateOrCreateOne(models.Result, {
       where: { id: resultRecord.id },
       defaults: resultRecord,
-      pick: ['votes', 'percent', 'apUpdated'],
+      pick: ['votes', 'percent', 'apUpdated', 'sourceData'],
       transaction
     })
   );
 
   // Update contest
-  results.push([
-    await contest.update(
-      {
-        reporting: result.precinctsreporting,
-        totalPrecincts: result.precinctstotal
-      },
-      { transaction }
-    ),
-    false
-  ]);
+  if (!isCounty) {
+    results.push([
+      await contest.update(
+        {
+          reporting: result.precinctsreporting,
+          totalPrecincts: result.precinctstotal,
+          sourceData: {
+            [source.get('id')]: {
+              data: original
+            }
+          }
+        },
+        { transaction }
+      ),
+      false
+    ]);
+  }
 
   return results;
 }
