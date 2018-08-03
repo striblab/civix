@@ -40,5 +40,5 @@ module.exports = {
   logPath: process.env.CIVIX_LOG_PATH || path.join(process.cwd(), '.logs'),
   cachePath: process.env.CIVIX_CACHE_PATH || path.join(process.cwd(), '.cache'),
   apAPIKey: process.env.AP_API_KEY,
-  elexTest: envParseBoolean(process.env.CIVIX_ELEX_TEST, true)
+  elexTest: envParseBoolean(process.env.CIVIX_ELEX_TEST, false)
 };

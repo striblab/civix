@@ -15,7 +15,6 @@ module.exports = async function coreDataElexRacesImporter({
   db
 }) {
   logger('info', 'AP (via Elex) Results importer...');
-  let updates = [];
 
   // Election information
   const electionString = '2018-08-14';
@@ -140,7 +139,7 @@ async function importResult({
 
   // Unsure best way to only find top level results, but
   // this seems to work
-  if (result.level !== 'state') {
+  if (result.level !== 'state' && result.level !== null) {
     return [];
   }
 
@@ -183,12 +182,15 @@ async function importResult({
     return [];
   }
 
+  console.log(result);
+
   // Create candidate record
   let resultRecord = {
     id: db.makeIdentifier([contest.get('id'), result.candidateid, result.last]),
     contest_id: contest.get('id'),
     candidate_id: candidate.get('id'),
     apId: result.id,
+    apUpdated: result.lastupdated ? new Date(result.lastupdated) : undefined,
     units: undefined,
     votes: result.votecount,
     percent: result.votepct,
@@ -204,7 +206,7 @@ async function importResult({
     await db.updateOrCreateOne(models.Result, {
       where: { id: resultRecord.id },
       defaults: resultRecord,
-      pick: ['votes', 'percent'],
+      pick: ['votes', 'percent', 'apUpdated'],
       transaction
     })
   );
@@ -213,8 +215,8 @@ async function importResult({
   results.push([
     await contest.update(
       {
-        reporting: result.i,
-        totalPrecincts: result.i
+        reporting: result.precinctsreporting,
+        totalPrecincts: result.precinctstotal
       },
       { transaction }
     ),

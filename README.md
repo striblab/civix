@@ -24,6 +24,7 @@ In the meantime, clone the project and do: `npm install && npm link`
   - `DEBUG=civix:*`: Specific debugging
 - `CIVIX_DATABASE_URI`: Database URI
 - `AP_API_KEY`: Used by Elex to get AP data
+- `CIVIX_ELEX_TEST`: Whether to use test data from AP via Elex.
 
 ### Setting up the database.
 
