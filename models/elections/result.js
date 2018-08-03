@@ -24,6 +24,10 @@ module.exports = db => {
             type: Sequelize.STRING(128),
             description: 'ID used by the Associated Press.'
           },
+          apUpdated: {
+            type: Sequelize.DATE(),
+            description: 'The Last Updated date from the AP.'
+          },
           localId: {
             type: Sequelize.STRING(128),
             description:
@@ -62,6 +66,7 @@ module.exports = db => {
       indexes: utils.snakeCaseIndexes([
         { fields: ['units'] },
         { fields: ['apId'] },
+        { fields: ['apUpdated'] },
         { fields: ['localId'] },
         { fields: ['votes'] },
         { fields: ['percent'] },

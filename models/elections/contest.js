@@ -18,6 +18,10 @@ module.exports = db => {
       utils.extendWithNotes(
         utils.extendWithSourceData(
           utils.extendWithNames({
+            description: {
+              type: Sequelize.TEXT(),
+              description: 'General description of this contest.'
+            },
             localId: {
               type: Sequelize.STRING(128),
               description: 'ID used by local administration, likely the state.'
