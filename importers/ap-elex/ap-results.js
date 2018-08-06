@@ -158,20 +158,6 @@ async function importResult({
   let original = _.cloneDeep(result);
   let results = [];
 
-  // Get party
-  let party = await models.Party.findOne({
-    where: { apId: result.party.toLowerCase() },
-    transaction
-  });
-
-  // Assume unknown party is non-partisan
-  if (!party) {
-    party = await models.Party.findOne({
-      where: { id: 'np' },
-      transaction
-    });
-  }
-
   // Get candidate record
   let candidate = await models.Candidate.findOne({
     where: { apId: result.candidateid },
