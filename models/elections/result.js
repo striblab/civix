@@ -53,6 +53,11 @@ module.exports = db => {
             description: 'Whether this candidate is a winner.',
             defaultValue: false
           },
+          resultDetails: {
+            type: Sequelize.JSON(),
+            description:
+              'The details of the result, for instance, data on ranked-choice voting.'
+          },
           subResult: {
             type: Sequelize.BOOLEAN(),
             description:

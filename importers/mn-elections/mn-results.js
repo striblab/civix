@@ -196,6 +196,7 @@ async function importContest({
           : undefined,
       winner: candidate.winner,
       test: candidate.test,
+      resultDetails: candidate.ranks,
       sourceData: {
         [source.get('id')]: {
           data: candidate
