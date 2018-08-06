@@ -7,6 +7,7 @@
  */
 
 // Dependencies
+const _ = require('lodash');
 const Sequelize = require('sequelize');
 const utils = require('../model-utils.js');
 
@@ -157,7 +158,12 @@ module.exports = db => {
 
     // Make an association to results so that we can reference them
     // from this model
-    this.__associations.push(this.hasMany(Result));
+    this.__associations.push(
+      this.hasMany(Result, { where: { subResult: false } })
+    );
+    this.__associations.push(
+      this.hasMany(Result, { as: 'subResults', where: { subResult: true } })
+    );
 
     // Add source fields
     utils.extendWithSources(this, Source);

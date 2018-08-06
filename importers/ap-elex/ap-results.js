@@ -203,12 +203,10 @@ async function importResult({
     result.candidateid,
     result.last
   ]);
-  let parentId;
   let boundaryVersionId;
 
   // If county, make parent id
   if (isCounty) {
-    parentId = resultId;
     resultId = db.makeIdentifier([resultId, result.fipscode]);
 
     let boundaryVersion = await models.BoundaryVersion.findOne({
@@ -232,8 +230,9 @@ async function importResult({
     percent: result.votepct,
     winner: result.winner,
     test: result.test,
-    parent_id: parentId ? parentId : undefined,
+    subResult: isCounty ? true : false,
     boundary_version_id: boundaryVersionId ? boundaryVersionId : undefined,
+    division_id: isCounty ? result.level : undefined,
     sourceData: {
       [source.get('id')]: {
         data: original

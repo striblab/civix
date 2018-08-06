@@ -7,35 +7,46 @@ const _ = require('lodash');
 const fs = require('fs-extra');
 const path = require('path');
 
-// Map Keys deep
-const mapKeysDeep = (obj, cb) => {
-  if (_.isArray(obj)) {
-    return obj.map(innerObj => mapKeysDeep(innerObj, cb));
-  }
-  else if (_.isObject(obj)) {
-    return _.mapValues(_.mapKeys(obj, cb), val => mapKeysDeep(val, cb));
-  }
-  else {
-    return obj;
-  }
-};
-
 // Export function
 module.exports = async ({ logger, config, models, db, argv }) => {
+  // Make query
   let contests = await models.Contest.findAll({
     where: {
       election_id: 'mn-20180814'
     },
     include: [
-      { all: true },
-      // More than one-level in needs to be explicitly added ?
+      {
+        all: true,
+        attributes: { exclude: ['sourceData'] }
+      },
       {
         model: models.Result,
-        include: [models.Candidate]
+        attributes: { exclude: ['sourceData'] },
+        // Just top results
+        where: { subResult: false },
+        include: [
+          {
+            model: models.Candidate,
+            attributes: { exclude: ['sourceData'] }
+          }
+        ]
+      },
+      {
+        model: models.Result,
+        attributes: { exclude: ['sourceData'] },
+        // Sub results
+        where: { subResult: true },
+        as: 'subResults'
       },
       {
         model: models.Office,
-        include: [models.Body]
+        attributes: { exclude: ['sourceData'] },
+        include: [
+          {
+            model: models.Body,
+            attributes: { exclude: ['sourceData'] }
+          }
+        ]
       }
     ]
   });
@@ -44,7 +55,19 @@ module.exports = async ({ logger, config, models, db, argv }) => {
   let election = await contests[0].getElection();
 
   // Turn to json
-  let simpleContests = _.map(contests, c => c.get({ plain: true }));
+  let simpleContests = _.map(contests, c => {
+    let p = c.get({ plain: true });
+
+    // Group sub results
+    p.subResults = _.mapValues(_.groupBy(p.subResults, 'division_id'), g =>
+      _.groupBy(g, 'boundary_version_id')
+    );
+
+    return p;
+  });
+
+  // Just top level results
+  let topResults = _.map(simpleContests, c => _.omit(c, 'subResults'));
 
   // Create base path
   let electionContestsPath = path.join(argv.output, election.id, 'contests');
@@ -58,35 +81,60 @@ module.exports = async ({ logger, config, models, db, argv }) => {
 
   // Output all
   let allPath = path.join(electionContestsPath, 'all.json');
-  fs.writeFileSync(allPath, JSON.stringify(simpleContests));
+  fs.writeFileSync(allPath, JSON.stringify(topResults));
 
   // Each contest
   let byContestPath = path.join(electionContestsPath, 'contests');
   fs.mkdirpSync(byContestPath);
-  _.each(simpleContests, c => {
+  _.each(topResults, c => {
     fs.writeFileSync(
       path.join(byContestPath, `${c.id}.json`),
       JSON.stringify(c)
     );
   });
 
-  // By body
+  // Each contest (with sub results)
+  fs.mkdirpSync(byContestPath);
+  _.each(simpleContests, c => {
+    fs.writeFileSync(
+      path.join(byContestPath, `${c.id}.sub-results.json`),
+      JSON.stringify(c)
+    );
+  });
+
+  // By body (and then office)
   let byBodyPath = path.join(electionContestsPath, 'by-body');
   fs.mkdirpSync(byBodyPath);
-  _.each(_.groupBy(simpleContests, c => c.office.body_id), (g, gi) => {
+  _.each(_.groupBy(topResults, c => c.office.body_id), (g, gi) => {
+    let body =
+      gi && gi !== 'null'
+        ? _.cloneDeep(g[0].office.body)
+        : { id: 'no-body', noBody: true };
+    body.offices = _.mapValues(_.groupBy(g, o => o.office_id), o => {
+      let office = _.cloneDeep(o[0].office);
+      office.contests = o;
+      return office;
+    });
+
     fs.writeFileSync(
-      path.join(byBodyPath, `${gi || gi !== 'null' ? gi : 'no-body'}.json`),
-      JSON.stringify(g)
+      path.join(byBodyPath, `${body.id}.json`),
+      JSON.stringify(body)
     );
   });
 
   // By office
   let byOfficePath = path.join(electionContestsPath, 'by-office');
   fs.mkdirpSync(byOfficePath);
-  _.each(_.groupBy(simpleContests, c => c.office_id), (g, gi) => {
+  _.each(_.groupBy(topResults, c => c.office_id), (g, gi) => {
+    let office =
+      gi && gi !== 'null'
+        ? _.cloneDeep(g[0].office)
+        : { id: 'no-contest', noContest: true };
+    office.contests = g;
+
     fs.writeFileSync(
-      path.join(byOfficePath, `${gi || gi !== 'null' ? gi : 'no-office'}.json`),
-      JSON.stringify(g)
+      path.join(byOfficePath, `${office.id}.json`),
+      JSON.stringify(office)
     );
   });
 };
