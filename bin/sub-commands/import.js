@@ -72,7 +72,8 @@ exports.handler = async argv => {
       logger: logger.p,
       config,
       models: db.models,
-      db: db
+      db: db,
+      argv
     });
   }
   catch (e) {

@@ -5,7 +5,9 @@
 // Dependencies
 const _ = require('lodash');
 const path = require('path');
+const json = require('json5');
 require('dotenv').load();
+const debug = require('debug')('civix:config');
 
 // Parse a boolean
 function envParseBoolean(input, defaultValue = false) {
@@ -29,6 +31,26 @@ function envParseBoolean(input, defaultValue = false) {
   }
 }
 
+// Parse an array
+function envParseArray(input, strictArray = false, defaultValue = null) {
+  if (input) {
+    if (!strictArray && _.isString(input) && input[0] !== '[') {
+      return input;
+    }
+
+    try {
+      return json.parse(input);
+    }
+    catch (e) {
+      debug(`Unable to parse array from: ${input}`);
+      debug(e);
+      return defaultValue;
+    }
+  }
+
+  return defaultValue;
+}
+
 // Export
 module.exports = {
   appId: 'civix',
@@ -42,5 +64,7 @@ module.exports = {
   exportPath:
     process.env.CIVIX_EXPORT_PATH || path.join(process.cwd(), 'civix-exports'),
   apAPIKey: process.env.AP_API_KEY,
-  elexTest: envParseBoolean(process.env.CIVIX_ELEX_TEST, false)
+  testResults: envParseBoolean(process.env.CIVIX_TEST_RESULTS, false),
+  mnElectionsTestLevel: process.env.CIVIX_MN_ELECTIONS_TEST_LEVEL || 'middle',
+  elexFakeFiles: envParseArray(process.env.CIVIX_ELEX_FAKE_FILES, false, null)
 };

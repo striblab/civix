@@ -12,7 +12,8 @@ const debug = require('debug')('civix:importer:ap-results');
 module.exports = async function coreDataElexRacesImporter({
   logger,
   models,
-  db
+  db,
+  config
 }) {
   logger('info', 'AP (via Elex) Results importer...');
 
@@ -69,7 +70,8 @@ module.exports = async function coreDataElexRacesImporter({
         transaction,
         models,
         source,
-        election
+        election,
+        config
       })
     );
 
@@ -105,7 +107,8 @@ async function importResults({
   transaction,
   models,
   source,
-  election
+  election,
+  config
 }) {
   let results = [];
 
@@ -119,7 +122,8 @@ async function importResults({
           db,
           models,
           transaction,
-          source
+          source,
+          config
         })
       );
     }
@@ -136,7 +140,8 @@ async function importResults({
           models,
           transaction,
           source,
-          isCounty: true
+          isCounty: true,
+          config
         })
       );
     }
@@ -153,7 +158,8 @@ async function importResult({
   models,
   transaction,
   source,
-  isCounty
+  isCounty,
+  config
 }) {
   let original = _.cloneDeep(result);
   let results = [];
@@ -219,7 +225,7 @@ async function importResult({
     percent: result.votepct,
     winner: result.winner,
     incumbent: result.incumbent,
-    test: result.test,
+    test: config.testResults,
     subResult: isCounty ? true : false,
     boundary_version_id: boundaryVersionId ? boundaryVersionId : undefined,
     division_id: isCounty ? result.level : undefined,

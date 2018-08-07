@@ -12,7 +12,8 @@ const debug = require('debug')('civix:importer:mn-results');
 module.exports = async function mnElectionsMNResultsImporter({
   logger,
   models,
-  db
+  db,
+  config
 }) {
   logger('info', 'MN (via API) Results importer...');
 
@@ -72,7 +73,8 @@ module.exports = async function mnElectionsMNResultsImporter({
         transaction,
         models,
         source,
-        election
+        election,
+        config
       })
     );
 
@@ -108,7 +110,8 @@ async function importContests({
   models,
   transaction,
   source,
-  election
+  election,
+  config
 }) {
   let results = [];
 
@@ -120,7 +123,8 @@ async function importContests({
         db,
         models,
         transaction,
-        source
+        source,
+        config
       })
     );
   }
@@ -135,7 +139,8 @@ async function importContest({
   db,
   models,
   transaction,
-  source
+  source,
+  config
 }) {
   let original = _.cloneDeep(contest);
   let results = [];
@@ -195,7 +200,7 @@ async function importContest({
           ? candidate.percent / 100
           : undefined,
       winner: candidate.winner,
-      test: candidate.test,
+      test: config.testResults,
       resultDetails: candidate.ranks,
       sourceData: {
         [source.get('id')]: {
@@ -208,7 +213,7 @@ async function importContest({
       await db.updateOrCreateOne(models.Result, {
         where: { id: resultRecord.id },
         defaults: resultRecord,
-        pick: ['votes', 'percent', 'sourceData'],
+        pick: ['test', 'winner', 'votes', 'percent', 'sourceData'],
         transaction
       })
     );
