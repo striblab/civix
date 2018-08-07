@@ -23,8 +23,9 @@ exports.builder = yargs => {
 
   yargs.positional('output', {
     alias: 'o',
-    describe: 'Location of where to output.',
-    default: path.join(process.cwd(), 'civix-exports'),
+    describe:
+      'Location of where to output.  Uses CIVIX_EXPORT_PATH environment variable, or civix-exports in current path, if not provided here.',
+    default: config.exportPath,
     type: 'string'
   });
 
