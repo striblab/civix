@@ -17,6 +17,7 @@ module.exports = async ({ logger, config, models, db, argv }) => {
     order: [
       ['sort', 'ASC'],
       ['title', 'ASC'],
+      [{ model: models.Result, as: 'results' }, 'winner', 'DESC'],
       [{ model: models.Result, as: 'results' }, 'percent', 'DESC'],
       [{ model: models.Party }, 'sort', 'ASC'],
       [
