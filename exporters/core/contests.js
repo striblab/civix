@@ -14,6 +14,18 @@ module.exports = async ({ logger, config, models, db, argv }) => {
     where: {
       election_id: 'mn-20180814'
     },
+    order: [
+      ['title', 'ASC'],
+      [{ model: models.Result, as: 'results' }, 'percent', 'DESC'],
+      [{ model: models.Party }, 'sort', 'ASC'],
+      [
+        { model: models.Result, as: 'results' },
+        { model: models.Candidate },
+        'sort',
+        'ASC'
+      ],
+      [{ model: models.Result, as: 'subResults' }, 'percent', 'DESC']
+    ],
     include: [
       {
         all: true,
@@ -27,7 +39,13 @@ module.exports = async ({ logger, config, models, db, argv }) => {
         include: [
           {
             model: models.Candidate,
-            attributes: { exclude: ['sourceData'] }
+            attributes: { exclude: ['sourceData'] },
+            include: [
+              {
+                model: models.Party,
+                attributes: { exclude: ['sourceData'] }
+              }
+            ]
           }
         ]
       },
@@ -36,7 +54,8 @@ module.exports = async ({ logger, config, models, db, argv }) => {
         attributes: { exclude: ['sourceData'] },
         // Sub results
         where: { subResult: true },
-        as: 'subResults'
+        as: 'subResults',
+        required: false
       },
       {
         model: models.Office,
@@ -53,6 +72,17 @@ module.exports = async ({ logger, config, models, db, argv }) => {
 
   // Get election
   let election = await contests[0].getElection();
+
+  // Get divisions
+  let divisions = _.keyBy(
+    _.map(
+      await models.Division.findAll({
+        attributes: { exclude: ['sourceData'] }
+      }),
+      d => d.get({ plain: true })
+    ),
+    'id'
+  );
 
   // Turn to json
   let simpleContests = _.map(contests, c => {
@@ -96,6 +126,10 @@ module.exports = async ({ logger, config, models, db, argv }) => {
   // Each contest (with sub results)
   fs.mkdirpSync(byContestPath);
   _.each(simpleContests, c => {
+    if (!c.subResults || _.isEmpty(c.subResults)) {
+      return;
+    }
+
     fs.writeFileSync(
       path.join(byContestPath, `${c.id}.sub-results.json`),
       JSON.stringify(c)
@@ -121,6 +155,23 @@ module.exports = async ({ logger, config, models, db, argv }) => {
       JSON.stringify(body)
     );
   });
+
+  // (Loosely) by boundary
+  let byBoundaryPath = path.join(electionContestsPath, 'by-boundary');
+  fs.mkdirpSync(byBoundaryPath);
+  _.each(
+    _.groupBy(topResults, c =>
+      c.office.boundary_id
+        .replace(/(-[0-9]+|-[a-z])(-|$)/gi, '$2')
+        .replace(/(-[0-9]+|-[a-z])(-|$)/gi, '$2')
+    ),
+    (g, gi) => {
+      fs.writeFileSync(
+        path.join(byBoundaryPath, `${gi}.json`),
+        JSON.stringify(g)
+      );
+    }
+  );
 
   // By office
   let byOfficePath = path.join(electionContestsPath, 'by-office');
