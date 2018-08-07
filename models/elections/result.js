@@ -48,6 +48,12 @@ module.exports = db => {
             description:
               'The between-0-and-1 percent of votes for this candidate.'
           },
+          incumbent: {
+            type: Sequelize.BOOLEAN(),
+            description:
+              'Whether this candidate is the current incumbent at the time of this contest.',
+            defaultValue: false
+          },
           winner: {
             type: Sequelize.BOOLEAN(),
             description: 'Whether this candidate is a winner.',
@@ -82,6 +88,7 @@ module.exports = db => {
         { fields: ['votes'] },
         { fields: ['percent'] },
         { fields: ['winner'] },
+        { fields: ['incumbent'] },
         { fields: ['subResult'] },
         {
           name: 'results_children_id',

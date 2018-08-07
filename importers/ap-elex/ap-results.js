@@ -161,7 +161,8 @@ async function importResult({
   // Get candidate record
   let candidate = await models.Candidate.findOne({
     where: { apId: result.candidateid },
-    transaction
+    transaction,
+    include: []
   });
   if (!candidate) {
     debug(result);
@@ -171,7 +172,8 @@ async function importResult({
   // Get contest record
   let contest = await models.Contest.findOne({
     where: { apId: result.raceid, election_id: election.get('id') },
-    transaction
+    transaction,
+    include: []
   });
   // There are some candidate results that are not in the results
   // set, but it seems to only be uncontested.
@@ -197,7 +199,8 @@ async function importResult({
 
     let boundaryVersion = await models.BoundaryVersion.findOne({
       where: { fips: result.fipscode.replace(/^27/, '') },
-      transaction
+      transaction,
+      include: []
     });
     if (boundaryVersion) {
       boundaryVersionId = boundaryVersion.get('id');
@@ -215,6 +218,7 @@ async function importResult({
     votes: result.votecount,
     percent: result.votepct,
     winner: result.winner,
+    incumbent: result.incumbent,
     test: result.test,
     subResult: isCounty ? true : false,
     boundary_version_id: boundaryVersionId ? boundaryVersionId : undefined,
@@ -229,8 +233,9 @@ async function importResult({
     await db.updateOrCreateOne(models.Result, {
       where: { id: resultRecord.id },
       defaults: resultRecord,
-      pick: ['votes', 'percent', 'apUpdated', 'sourceData'],
-      transaction
+      pick: ['test', 'winner', 'votes', 'percent', 'apUpdated', 'sourceData'],
+      transaction,
+      include: []
     })
   );
 
@@ -247,7 +252,10 @@ async function importResult({
             }
           }
         },
-        { transaction }
+        {
+          transaction,
+          include: []
+        }
       ),
       false
     ]);
