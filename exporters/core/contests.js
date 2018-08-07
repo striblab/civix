@@ -15,6 +15,7 @@ module.exports = async ({ logger, config, models, db, argv }) => {
       election_id: 'mn-20180814'
     },
     order: [
+      ['sort', 'ASC'],
       ['title', 'ASC'],
       [{ model: models.Result, as: 'results' }, 'percent', 'DESC'],
       [{ model: models.Party }, 'sort', 'ASC'],
