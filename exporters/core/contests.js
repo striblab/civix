@@ -152,9 +152,38 @@ module.exports = async ({ logger, config, models, db, argv }) => {
       return office;
     });
 
+    // All offices in body
     fs.writeFileSync(
       path.join(byBodyPath, `${body.id}.json`),
       JSON.stringify(body)
+    );
+
+    // Break up into contested and uncontested.  For an office with a
+    // partisan primary, both contests must be uncontested
+    let contested = _.cloneDeep(body);
+    contested.offices = filterValues(contested.offices, o => {
+      let uncontested = true;
+      o.contests.forEach(c => {
+        uncontested = c.uncontested === false ? false : uncontested;
+      });
+      return !uncontested;
+    });
+    fs.writeFileSync(
+      path.join(byBodyPath, `${body.id}.contested.json`),
+      JSON.stringify(contested)
+    );
+
+    let uncontested = _.cloneDeep(body);
+    uncontested.offices = filterValues(uncontested.offices, o => {
+      let uncontested = true;
+      o.contests.forEach(c => {
+        uncontested = c.uncontested === false ? false : uncontested;
+      });
+      return uncontested;
+    });
+    fs.writeFileSync(
+      path.join(byBodyPath, `${body.id}.uncontested.json`),
+      JSON.stringify(uncontested)
     );
   });
 
@@ -191,3 +220,15 @@ module.exports = async ({ logger, config, models, db, argv }) => {
     );
   });
 };
+
+// Filter object and keep keys
+function filterValues(object, filter) {
+  filter = filter || identity;
+  return Object.keys(object).reduce(function(x, key) {
+    var value = object[key];
+    if (filter(value)) {
+      x[key] = value;
+    }
+    return x;
+  }, {});
+}
