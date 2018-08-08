@@ -95,7 +95,7 @@ module.exports = async ({ logger, config, models, db, argv }) => {
       _.groupBy(g, 'boundary_version_id')
     );
 
-    return p;
+    return pruneEmpty(p);
   });
 
   // Just top level results
@@ -146,6 +146,10 @@ module.exports = async ({ logger, config, models, db, argv }) => {
       gi && gi !== 'null'
         ? _.cloneDeep(g[0].office.body)
         : { id: 'no-body', noBody: true };
+    if (!body) {
+      return;
+    }
+
     body.offices = _.mapValues(_.groupBy(g, o => o.office_id), o => {
       let office = _.cloneDeep(o[0].office);
       office.contests = o;
@@ -231,4 +235,26 @@ function filterValues(object, filter) {
     }
     return x;
   }, {});
+}
+
+// REcursive clean
+function pruneEmpty(obj) {
+  return (function prune(current) {
+    _.forOwn(current, function(value, key) {
+      if (
+        _.isUndefined(value) ||
+        _.isNull(value) ||
+        _.isNaN(value) ||
+        (_.isString(value) && _.isEmpty(value)) ||
+        (_.isObject(value) && _.isEmpty(prune(value)))
+      ) {
+        delete current[key];
+      }
+    });
+    // remove any leftover undefined values from the delete
+    // operation on an array
+    if (_.isArray(current)) _.pull(current, undefined);
+
+    return current;
+  })(_.cloneDeep(obj)); // Do not modify the original object, create a clone instead
 }
