@@ -110,7 +110,7 @@ function importStates({ counties, db, transaction, models, source }) {
       // FIPS is provided, but Minnesota ID is FIPS + 1 / 2
       let fips = p.COUNTYFIPS;
       let numfips = parseInt(fips, 10);
-      let mnId = (numfips + 1) * 2;
+      let mnId = ((numfips + 1) / 2).toString().padStart(2, '0');
       let boundaryId = `mn-county-${fips}`;
       // Date from source web page
       let boundaryVersionId = `2013-${boundaryId}`;
@@ -125,6 +125,7 @@ function importStates({ counties, db, transaction, models, source }) {
             id: boundaryId,
             name: boundaryId,
             title: p.COUNTYNAME,
+            sort: p.COUNTYNAME.toLowerCase(),
             localId: mnId,
             parent_id: 'state-mn',
             division_id: 'county',

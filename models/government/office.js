@@ -16,6 +16,11 @@ module.exports = db => {
       utils.extendWithSourceData(
         utils.extendWithNotes(
           utils.extendWithNames({
+            area: {
+              type: Sequelize.STRING(256),
+              description:
+                'Describes the area that this office is for.  Overall this repeats the boundary information.'
+            },
             seatName: {
               type: Sequelize.STRING(256),
               description: 'The name of the seat, such as "A" or "B".'
@@ -27,7 +32,7 @@ module.exports = db => {
     {
       underscored: true,
       indexes: utils.snakeCaseIndexes(
-        utils.addNameIndexes([{ fields: ['seatName'] }])
+        utils.addNameIndexes([{ fields: ['seatName'] }, { fields: ['area'] }])
       )
     }
   );

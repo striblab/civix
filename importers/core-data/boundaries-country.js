@@ -33,6 +33,7 @@ module.exports = async function coreDataCountryImporter({
             id: 'usa',
             name: 'usa',
             title: 'United States of America',
+            shortTitle: 'U.S.A.',
             sort: 'united states of america',
             division_id: 'country',
             sourceData: {

@@ -112,6 +112,8 @@ function importStates({ states, db, transaction, models, source }) {
             id: boundaryId,
             name: boundaryId,
             title: p.NAME,
+            shortTitle: p.STUSPS,
+            sort: p.NAME.toLowerCase(),
             localId: p.STUSPS,
             parent_id: 'usa',
             division_id: 'state',
