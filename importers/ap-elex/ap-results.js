@@ -227,6 +227,12 @@ async function importResult({
     incumbent: result.incumbent,
     test: config.testResults,
     subResult: isCounty ? true : false,
+    resultDetails: isCounty
+      ? {
+        reporting: result.precinctsreporting,
+        totalPrecincts: result.precinctstotal
+      }
+      : undefined,
     boundary_version_id: boundaryVersionId ? boundaryVersionId : undefined,
     division_id: isCounty ? result.level : undefined,
     sourceData: {
@@ -239,7 +245,15 @@ async function importResult({
     await db.updateOrCreateOne(models.Result, {
       where: { id: resultRecord.id },
       defaults: resultRecord,
-      pick: ['test', 'winner', 'votes', 'percent', 'apUpdated', 'sourceData'],
+      pick: [
+        'test',
+        'winner',
+        'votes',
+        'percent',
+        'apUpdated',
+        'sourceData',
+        'resultDetails'
+      ],
       transaction,
       include: []
     })
