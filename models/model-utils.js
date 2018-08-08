@@ -34,6 +34,11 @@ function extendWithNames(fields = {}) {
         description: 'The formatted title used for publication.',
         allowNull: false
       },
+      shortTitle: {
+        type: Sequelize.STRING(256),
+        description:
+          'The shorter title of this data, usually used when it is embedded within other/related data that defines a certain level of context already.  Such as "District 2".'
+      },
       sort: {
         type: Sequelize.STRING(256),
         description:
@@ -61,6 +66,7 @@ function addNameIndexes(indexes = []) {
   return indexes.concat([
     { fields: ['name'] },
     { fields: ['title'] },
+    { fields: ['shortTitle'] },
     { fields: ['sort'] }
   ]);
 }

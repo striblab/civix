@@ -48,7 +48,7 @@ module.exports = async function coreDataPartiesImporter({
           ['DNL', 'Democratic-Nonpartisan League'],
           ['DEM', 'Democratic Party', 'DEM', 'aaaad'],
           ['D/C', 'Democratic/Conservative'],
-          ['DFL', 'Democratic-Farmer-Labor', undefined, 'aaaad'],
+          ['DFL', 'Democratic-Farmer-Labor', undefined, 'aaaad', 'DFL'],
           ['DGR', 'Desert Green Party'],
           ['FED', 'Federalist'],
           ['FLP', 'Freedom Labor Party'],
@@ -105,7 +105,7 @@ module.exports = async function coreDataPartiesImporter({
           ['SOC', 'Socialist Party U.S.A.'],
           ['SWP', 'Socialist Workers Party'],
           ['TX', 'Taxpayers'],
-          ['TWR', 'Taxpayers without Representation '],
+          ['TWR', 'Taxpayers without Representation'],
           ['TEA', 'Tea Party'],
           ['THD', 'Theo-Democratic'],
           ['USP', 'U.S. People\'s Party'],
@@ -124,8 +124,16 @@ module.exports = async function coreDataPartiesImporter({
               id: _.kebabCase(p[0]),
               name: _.kebabCase(p[0]),
               title: p[1].trim(),
+              // Short title from p4, or remove party, or
+              shortTitle: p[4]
+                ? p[4]
+                : p[1] && p[1].match(/ party/i)
+                  ? p[1].replace(/ party$/i, '')
+                  : undefined,
               abbreviation: p[0],
+              // Specific AP ids
               apId: p[2] ? p[2].toLowerCase() : undefined,
+              // Sort using p3 or just name
               sort: `${p[3] ? p[3] + ' ' : ''}${_
                 .kebabCase(p[1])
                 .replace(/-/g, ' ')}`,
