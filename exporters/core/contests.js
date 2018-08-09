@@ -245,8 +245,8 @@ function pruneEmpty(obj) {
         _.isUndefined(value) ||
         _.isNull(value) ||
         _.isNaN(value) ||
-        (_.isString(value) && _.isEmpty(value)) ||
-        (_.isObject(value) && _.isEmpty(prune(value)))
+        (!_.isDate(value) && _.isString(value) && _.isEmpty(value)) ||
+        (!_.isDate(value) && _.isObject(value) && _.isEmpty(prune(value)))
       ) {
         delete current[key];
       }
