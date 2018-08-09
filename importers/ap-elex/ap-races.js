@@ -169,16 +169,10 @@ async function importContest({
     }
   }
 
-  // The Oth party is used for other parties in partisan
-  // primaries, as well as for
-  race.partisan = true;
-  if (race.officename.match(/district\s+court/i)) {
-    race.partisan = false;
-  }
-
-  // If partisan race and party Oth, throw away
-  if (race.party.match(/^oth$/i) && race.partisan) {
-    return new Promise(resolve => resolve([]));
+  // For the Supreme Court and Appeals, AP says ditrict when it is actually a seat
+  if (race.officename.match(/(supreme court|appeals court)/i)) {
+    race.statecourt = true;
+    race.seatname = race.seatname.replace(/district /i, 'Seat ');
   }
 
   // Parse out district court
@@ -191,8 +185,14 @@ async function importContest({
 
   // Parse out statewides that should be marked, but
   // are not
-  if (race.officename.match(/^auditor$/i)) {
+  if (race.officename.match(/^auditor$/i) || race.statecourt) {
     race.statewide = true;
+  }
+
+  // Note partisan
+  race.partisan = true;
+  if (race.districtcourt || race.statecourt) {
+    race.partisan = false;
   }
 
   // Identifiers
@@ -210,12 +210,14 @@ async function importContest({
     race.partisan && party ? party.get('id') : undefined
   ]);
 
-  //console.log(race.officename, '-', race.seatname, '-', race.subseatname);
-
-  // Known body types
+  // Known body types, and court groups
   // http://customersupport.ap.org/doc/AP_Elections_API_Developer_Guide.pdf
   let body;
-  if (~['H', 'S', 'Y', 'Z'].indexOf(race.officeid) || race.districtcourt) {
+  if (
+    ~['H', 'S', 'Y', 'Z'].indexOf(race.officeid) ||
+    race.districtcourt ||
+    race.statecourt
+  ) {
     body = {
       id: db.makeIdentifier([race.statepostal, race.officename]),
       name: db.makeIdentifier([race.statepostal, race.officename]),
@@ -294,7 +296,10 @@ async function importContest({
     sort: db.makeSort(
       _.filter([race.officename, race.seatname, race.subseatname]).join(' ')
     ),
-    seatName: race.subseatname,
+    seatName:
+      race.seatname && race.seatname.match(/^seat/i)
+        ? race.seatname
+        : race.subseatname,
     // Has boundary
     boundary_id: boundary
       ? boundary.id
@@ -336,7 +341,7 @@ async function importContest({
         party
           ? [party.get('shortTitle') || party.get('title'), 'Primary']
           : [
-            race.seatname.match(/^[0-9]+$/)
+            race.seatname && race.seatname.match(/^[0-9]+$/)
               ? `District ${race.seatname}`
               : race.seatname,
             race.subseatname
