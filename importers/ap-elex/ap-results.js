@@ -25,6 +25,7 @@ module.exports = async function coreDataElexRacesImporter({
     id: `mn-${electionDateId}`,
     name: `mn-${electionDateId}`,
     title: `Minnesota Primary ${electionString}`,
+    shortTitle: 'MN Primary',
     sort: `${electionDateId} minnesota primary`,
     date: electionDate,
     type: 'primary',

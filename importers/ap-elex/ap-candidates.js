@@ -24,6 +24,7 @@ module.exports = async function coreDataElexRacesImporter({
     id: `mn-${electionDateId}`,
     name: `mn-${electionDateId}`,
     title: `Minnesota Primary ${electionString}`,
+    shortTitle: 'MN Primary',
     sort: `${electionDateId} minnesota primary`,
     date: electionDate,
     type: 'primary',
@@ -141,10 +142,21 @@ async function importCandidate({
   }
 
   // Get party
-  let party = await models.Party.findOne({
-    where: { apId: candidate.party.toLowerCase() },
-    transaction
-  });
+
+  // Get party.  AP doesn't use DFL, though it should
+  let party;
+  if (candidate.party.toLowerCase() === 'dem') {
+    party = await models.Party.findOne({
+      where: { id: 'dfl' },
+      transaction
+    });
+  }
+  else {
+    party = await models.Party.findOne({
+      where: { apId: candidate.party.toLowerCase() },
+      transaction
+    });
+  }
 
   // Assume unknown party is non-partisan
   if (!party) {

@@ -14,7 +14,6 @@ module.exports = async function coreDataElexRacesImporter({
   db
 }) {
   logger('info', 'AP (via Elex) Races importer...');
-  let updates = [];
 
   // Election information
   const electionString = '2018-08-14';
@@ -24,6 +23,7 @@ module.exports = async function coreDataElexRacesImporter({
     id: `mn-${electionDateId}`,
     name: `mn-${electionDateId}`,
     title: `Minnesota Primary ${electionString}`,
+    shortTitle: 'MN Primary',
     sort: `${electionDateId} minnesota primary`,
     date: electionDate,
     type: 'primary',
@@ -136,11 +136,20 @@ async function importContest({
   let original = _.cloneDeep(race);
   let results = [];
 
-  // Get party
-  let party = await models.Party.findOne({
-    where: { apId: race.party.toLowerCase() },
-    transaction
-  });
+  // Get party.  AP doesn't use DFL, though it should
+  let party;
+  if (race.party.toLowerCase() === 'dem') {
+    party = await models.Party.findOne({
+      where: { id: 'dfl' },
+      transaction
+    });
+  }
+  else {
+    party = await models.Party.findOne({
+      where: { apId: race.party.toLowerCase() },
+      transaction
+    });
+  }
 
   // Senate races are in a class and can be special
   // https://en.wikipedia.org/wiki/List_of_United_States_Senators_from_Minnesota
@@ -200,6 +209,8 @@ async function importContest({
     race.subseatname,
     race.partisan && party ? party.get('id') : undefined
   ]);
+
+  //console.log(race.officename, '-', race.seatname, '-', race.subseatname);
 
   // Known body types
   // http://customersupport.ap.org/doc/AP_Elections_API_Developer_Guide.pdf
@@ -272,6 +283,14 @@ async function importContest({
     title: _
       .filter([race.officename, race.seatname, race.subseatname])
       .join(' '),
+    shortTitle: _
+      .filter([
+        race.seatname && race.seatname.match(/^[0-9]+$/)
+          ? `District ${race.seatname}`
+          : race.seatname,
+        race.subseatname
+      ])
+      .join(' '),
     sort: db.makeSort(
       _.filter([race.officename, race.seatname, race.subseatname]).join(' ')
     ),
@@ -311,6 +330,18 @@ async function importContest({
         race.subseatname,
         party ? party.get('title') : undefined
       ])
+      .join(' '),
+    shortTitle: _
+      .filter(
+        party
+          ? [party.get('shortTitle') || party.get('title'), 'Primary']
+          : [
+            race.seatname.match(/^[0-9]+$/)
+              ? `District ${race.seatname}`
+              : race.seatname,
+            race.subseatname
+          ]
+      )
       .join(' '),
     sort: db.makeSort(
       _
