@@ -137,7 +137,7 @@ async function importCandidate({
 
   // Unsure best way to only find top level results, but
   // this seems to work
-  if (candidate.level === 'state' || candidate.level === null) {
+  if (candidate.level !== 'state' && candidate.level !== null) {
     return [];
   }
 
