@@ -4,6 +4,7 @@
 
 // Dependencies
 const _ = require('lodash');
+const Sequelize = require('Sequelize');
 const Elex = require('../../lib/elex.js').Elex;
 const ensureElexSource = require('./source-ap-elex.js');
 const debug = require('debug')('civix:importer:ap-results');
@@ -112,6 +113,34 @@ async function importResults({
   config
 }) {
   let results = [];
+
+  // Reset all existing results
+  await models.Result.update(
+    {
+      test: false,
+      winner: false,
+      votes: 0,
+      percent: 0,
+      apUpdated: null,
+      sourceData: {},
+      resultDetails: {}
+    },
+    {
+      where: { apId: { [Sequelize.Op.not]: null } },
+      transaction
+    }
+  );
+  await models.Contest.update(
+    {
+      totalPrecincts: null,
+      reporting: 0,
+      sourceData: {}
+    },
+    {
+      where: { apId: { [Sequelize.Op.not]: null } },
+      transaction
+    }
+  );
 
   // Do top-level results first
   for (let result of electionResults) {
