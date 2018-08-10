@@ -26,7 +26,13 @@ module.exports = async ({ logger, config, models, db, argv }) => {
         'sort',
         'ASC'
       ],
-      [{ model: models.Result, as: 'subResults' }, 'percent', 'DESC']
+      [{ model: models.Result, as: 'subResults' }, 'percent', 'DESC'],
+      [
+        { model: models.Result, as: 'subResults' },
+        { model: models.Candidate },
+        'sort',
+        'ASC'
+      ]
     ],
     include: [
       {
@@ -57,7 +63,13 @@ module.exports = async ({ logger, config, models, db, argv }) => {
         // Sub results
         where: { subResult: true },
         as: 'subResults',
-        required: false
+        required: false,
+        include: [
+          {
+            model: models.Candidate,
+            attributes: { exclude: ['sourceData'] }
+          }
+        ]
       },
       {
         model: models.Office,
