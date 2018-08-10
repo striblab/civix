@@ -4,7 +4,7 @@
 
 // Dependencies
 const _ = require('lodash');
-const Sequelize = require('Sequelize');
+const Sequelize = require('sequelize');
 const Elex = require('../../lib/elex.js').Elex;
 const ensureElexSource = require('./source-ap-elex.js');
 const debug = require('debug')('civix:importer:ap-results');
@@ -99,6 +99,7 @@ module.exports = async function coreDataElexRacesImporter({
     transaction.rollback();
     logger('error', 'Transaction rolled back; no data changes were made.');
     logger('error', error.stack ? error.stack : error);
+    process.exit(1);
   }
 };
 

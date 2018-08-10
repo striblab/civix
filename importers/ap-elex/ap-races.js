@@ -94,6 +94,7 @@ module.exports = async function coreDataElexRacesImporter({
     transaction.rollback();
     logger('error', 'Transaction rolled back; no data changes were made.');
     logger('error', error.stack ? error.stack : error);
+    process.exit(1);
   }
 };
 
