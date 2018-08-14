@@ -16,11 +16,11 @@ exports.builder = yargs => {
     describe: 'The ID of the election to export.',
     type: 'string'
   });
-  // yargs.options('drop-tables', {
-  //   describe: 'Drop all tables first.',
-  //   type: 'boolean',
-  //   default: false
-  // });
+  yargs.options('upload', {
+    describe: 'Upload output to print FTP site.',
+    type: 'boolean',
+    default: false
+  });
 
   return yargs;
 };

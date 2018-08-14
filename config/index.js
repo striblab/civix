@@ -66,5 +66,9 @@ module.exports = {
   apAPIKey: process.env.AP_API_KEY,
   testResults: envParseBoolean(process.env.CIVIX_TEST_RESULTS, false),
   mnElectionsTestLevel: process.env.CIVIX_MN_ELECTIONS_TEST_LEVEL || 'middle',
-  elexFakeFiles: envParseArray(process.env.CIVIX_ELEX_FAKE_FILES, false, null)
+  elexFakeFiles: envParseArray(process.env.CIVIX_ELEX_FAKE_FILES, false, null),
+  ftpPrintHost: process.env.PRINT_FTP_HOST,
+  ftpPrintUser: process.env.PRINT_FTP_USER,
+  ftpPrintPass: process.env.PRINT_FTP_PASS,
+  ftpPrintPutLocation: process.env.PRINT_FTP_PUT_LOCATION
 };
