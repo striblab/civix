@@ -214,7 +214,14 @@ async function importContest({
       await db.updateOrCreateOne(models.Result, {
         where: { id: resultRecord.id },
         defaults: resultRecord,
-        pick: ['test', 'winner', 'votes', 'percent', 'sourceData'],
+        pick: [
+          'test',
+          'winner',
+          'votes',
+          'percent',
+          'sourceData',
+          'resultDetails'
+        ],
         transaction
       })
     );
