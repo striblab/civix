@@ -103,7 +103,7 @@ module.exports = db => {
     }
   );
 
-  model.associate = function({ Party, Contest, Source }) {
+  model.associate = function({ Party }) {
     this.__associations = [];
 
     // Each candidate belongs to a party
@@ -112,9 +112,6 @@ module.exports = db => {
         foreignKey: { allowNull: false }
       })
     );
-
-    // Add source fields
-    utils.extendWithSources(this, Source);
   };
 
   return model;

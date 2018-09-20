@@ -24,14 +24,11 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Source }) {
+  model.associate = function() {
     this.__associations = [];
 
     // Parent to a jurisdiction
     this.__associations.push(this.belongsTo(this, { as: 'parent' }));
-
-    // Add source fields
-    utils.extendWithSources(this, Source);
   };
 
   return model;

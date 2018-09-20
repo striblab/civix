@@ -34,11 +34,8 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Source }) {
+  model.associate = function() {
     this.__associations = [];
-
-    // Add source fields
-    utils.extendWithSources(this, Source);
   };
 
   return model;

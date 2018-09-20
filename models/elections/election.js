@@ -24,10 +24,16 @@ module.exports = db => {
               allowNull: false
             },
             type: {
-              type: Sequelize.ENUM('general', 'primary', 'special'),
+              type: Sequelize.ENUM('general', 'primary'),
               description: 'The type of the election.',
               defaultValue: 'general',
               allowNull: false
+            },
+            special: {
+              type: Sequelize.BOOLEAN(),
+              description: 'Whether this election is "special".',
+              allowNull: false,
+              defaultValue: false
             }
           })
         )
@@ -39,6 +45,7 @@ module.exports = db => {
         utils.addNameIndexes([
           { fields: ['date'] },
           { fields: ['type'] },
+          { fields: ['special'] },
           { unique: true, fields: ['date', 'type', 'BoundaryId'] }
         ])
       )
@@ -46,7 +53,7 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Boundary, Source }) {
+  model.associate = function({ Boundary }) {
     this.__associations = [];
 
     // Election has a boundary
@@ -55,9 +62,6 @@ module.exports = db => {
         foreignKey: { allowNull: false }
       })
     );
-
-    // Add source fields
-    utils.extendWithSources(this, Source);
   };
 
   return model;

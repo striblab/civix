@@ -19,7 +19,11 @@ module.exports = db => {
             area: {
               type: Sequelize.STRING(256),
               description:
-                'Describes the area that this office is for.  Overall this repeats the boundary information.'
+                'Describes the area that this office is for.  Overall this may repeat the boundary information.'
+            },
+            subArea: {
+              type: Sequelize.STRING(256),
+              description: 'The sub-area description, such as "ward 1".'
             },
             seatName: {
               type: Sequelize.STRING(256),
@@ -32,13 +36,17 @@ module.exports = db => {
     {
       underscored: true,
       indexes: utils.snakeCaseIndexes(
-        utils.addNameIndexes([{ fields: ['seatName'] }, { fields: ['area'] }])
+        utils.addNameIndexes([
+          { fields: ['seatName'] },
+          { fields: ['subArea'] },
+          { fields: ['area'] }
+        ])
       )
     }
   );
 
   // Associate
-  model.associate = function({ Boundary, Body, Contest, Source }) {
+  model.associate = function({ Boundary, Body, Contest }) {
     this.__associations = [];
 
     // Tied to a boundary
@@ -53,9 +61,6 @@ module.exports = db => {
 
     // Make an association back to contests
     this.__associations.push(this.hasMany(Contest));
-
-    // Add source fields
-    utils.extendWithSources(this, Source);
   };
 
   return model;

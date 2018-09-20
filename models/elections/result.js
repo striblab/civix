@@ -64,12 +64,6 @@ module.exports = db => {
             description:
               'The details of the result, for instance, data on ranked-choice voting.'
           },
-          subResult: {
-            type: Sequelize.BOOLEAN(),
-            description:
-              'If this is a sub result (i.e. a result that does not encompass the whole office) or not.',
-            defaultValue: false
-          },
           test: {
             type: Sequelize.BOOLEAN(),
             description: 'Whether is test data.',
@@ -89,31 +83,18 @@ module.exports = db => {
         { fields: ['percent'] },
         { fields: ['winner'] },
         { fields: ['incumbent'] },
-        { fields: ['subResult'] },
         {
           name: 'results_children_id',
           unique: true,
           // The combination of foreign keys needs to be unique
-          fields: [
-            'ContestId',
-            'CandidateId',
-            'subResult',
-            'BoundaryVersionId',
-            'DivisionId'
-          ]
+          fields: ['ContestId', 'CandidateId']
         }
       ])
     }
   );
 
   // Associate
-  model.associate = function({
-    Contest,
-    Candidate,
-    BoundaryVersion,
-    Division,
-    Source
-  }) {
+  model.associate = function({ Contest, Candidate }) {
     this.__associations = [];
 
     // A result is tied to a contest
@@ -129,14 +110,6 @@ module.exports = db => {
         foreignKey: { allowNull: false }
       })
     );
-
-    // A results can be a subresult of of other and tied to a specific
-    // boundary and division
-    this.__associations.push(this.belongsTo(BoundaryVersion));
-    this.__associations.push(this.belongsTo(Division));
-
-    // Add source fields
-    utils.extendWithSources(this, Source);
   };
 
   return model;

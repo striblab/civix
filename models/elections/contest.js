@@ -32,7 +32,7 @@ module.exports = db => {
               description: 'ID used by the Associated Press.'
             },
             type: {
-              type: Sequelize.ENUM('general', 'primary', 'special'),
+              type: Sequelize.ENUM('general', 'primary'),
               description:
                 'The type of the election for this specific contest; overriding the election value.',
               allowNull: true
@@ -102,6 +102,12 @@ module.exports = db => {
             totalVotes: {
               type: Sequelize.INTEGER(),
               description: 'The total number of votes cast.'
+            },
+            subContest: {
+              type: Sequelize.BOOLEAN(),
+              description:
+                'If this is a sub contest (i.e. a contest that is in a smaller boundary) or not.',
+              defaultValue: false
             }
           })
         )
@@ -123,7 +129,7 @@ module.exports = db => {
           { fields: ['totalPrecincts'] },
           {
             unique: true,
-            fields: ['ElectionId', 'OfficeId', 'PartyId']
+            fields: ['ElectionId', 'OfficeId', 'PartyId', 'BoundaryVersionId']
           }
         ])
       )
@@ -131,7 +137,13 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Election, Office, Party, Source, Result }) {
+  model.associate = function({
+    Election,
+    Office,
+    Party,
+    BoundaryVersion,
+    Division
+  }) {
     this.__associations = [];
 
     // A contest is tied to an election
@@ -156,17 +168,13 @@ module.exports = db => {
       })
     );
 
-    // Make an association to results so that we can reference them
-    // from this model
-    this.__associations.push(
-      this.hasMany(Result, { where: { subResult: false } })
-    );
-    this.__associations.push(
-      this.hasMany(Result, { as: 'subResults', where: { subResult: true } })
-    );
+    // A results can be a subresult of of other and tied to a specific
+    // boundary and division
+    this.__associations.push(this.belongsTo(BoundaryVersion));
+    this.__associations.push(this.belongsTo(Division));
 
-    // Add source fields
-    utils.extendWithSources(this, Source);
+    // A contest can be a subcontest
+    this.__associations.push(this.belongsTo(this, { as: 'parent' }));
   };
 
   return model;

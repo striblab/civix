@@ -33,7 +33,7 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Division, Source }) {
+  model.associate = function({ Division }) {
     this.__associations = [];
 
     // Parent to another boundary
@@ -45,9 +45,6 @@ module.exports = db => {
         foreignKey: { allowNull: false }
       })
     );
-
-    // Add source fields
-    utils.extendWithSources(this, Source);
   };
 
   return model;

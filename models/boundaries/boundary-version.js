@@ -68,7 +68,7 @@ module.exports = db => {
   );
 
   // Associate
-  model.associate = function({ Boundary, Source }) {
+  model.associate = function({ Boundary }) {
     this.__associations = [];
 
     // Boundary version has a main boundary
@@ -77,9 +77,6 @@ module.exports = db => {
         foreignKey: { allowNull: false }
       })
     );
-
-    // Add source fields
-    utils.extendWithSources(this, Source);
   };
 
   return model;
