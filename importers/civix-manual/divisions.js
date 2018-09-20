@@ -5,8 +5,12 @@
  * state.  They are a way to group jurisdiction.
  */
 
-// Dependencies
-const ensureManualSource = require('./source-manual.js');
+// Common source information
+const source = {
+  civix: {
+    manual: true
+  }
+};
 
 // Import function
 module.exports = async function coreDataDivisionsImporter({
@@ -20,78 +24,68 @@ module.exports = async function coreDataDivisionsImporter({
   // Wrap in transaction
   return db.sequelize
     .transaction({}, t => {
-      // Start promise chain
-      return ensureManualSource({ models, transaction: t }).then(source => {
-        updates.push(source);
+      return createCountry({
+        db,
+        models,
+        include: [{ all: true }],
+        transaction: t
+      }).then(country => {
+        updates.push(country);
 
-        return createCountry({
+        return createState({
           db,
           models,
-          include: [{ all: true }],
           transaction: t,
-          source: source[0]
-        }).then(country => {
-          updates.push(country);
+          country: country[0]
+        }).then(state => {
+          updates.push(state);
 
-          return createState({
+          return createStateChildren({
             db,
             models,
             transaction: t,
-            source: source[0],
-            country: country[0]
-          }).then(state => {
-            updates.push(state);
+            state: state[0]
+          }).then(results => {
+            updates = updates.concat(results);
 
-            return createStateChildren({
+            // Find county result
+            let county = results[0].find(r => {
+              return r.dataValues.id === 'county';
+            });
+            if (!county) {
+              throw new Error('Unable to find county division data.');
+            }
+
+            return createCountyChildren({
               db,
               models,
               transaction: t,
-              source: source[0],
-              state: state[0]
+              county
             }).then(results => {
               updates = updates.concat(results);
 
               // Find county result
-              let county = results[0].find(r => {
-                return r.dataValues.id === 'county';
+              let local = results[0].find(r => {
+                return r.dataValues.id === 'county-local';
               });
-              if (!county) {
+              if (!local) {
                 throw new Error('Unable to find county division data.');
               }
 
-              return createCountyChildren({
+              return createLocalChildren({
                 db,
                 models,
                 transaction: t,
-                source: source[0],
-                county
+                local
               }).then(results => {
                 updates = updates.concat(results);
-
-                // Find county result
-                let local = results[0].find(r => {
-                  return r.dataValues.id === 'county-local';
-                });
-                if (!local) {
-                  throw new Error('Unable to find county division data.');
-                }
-
-                return createLocalChildren({
-                  db,
-                  models,
-                  transaction: t,
-                  source: source[0],
-                  local
-                }).then(results => {
-                  updates = updates.concat(results);
-                });
               });
             });
           });
         });
       });
     })
-    .then(results => {
+    .then(() => {
       updates.forEach(u => {
         logger(
           'info',
@@ -108,7 +102,7 @@ module.exports = async function coreDataDivisionsImporter({
 };
 
 // Create country
-function createCountry({ db, models, transaction, source }) {
+function createCountry({ db, models, transaction }) {
   return db.findOrCreateOne(models.Division, {
     where: { id: 'country' },
     transaction,
@@ -117,15 +111,13 @@ function createCountry({ db, models, transaction, source }) {
       name: 'country',
       title: 'Country',
       sort: 'country',
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     }
   });
 }
 
 // Create state
-function createState({ db, models, transaction, source, country }) {
+function createState({ db, models, transaction, country }) {
   return db.findOrCreateOne(models.Division, {
     where: { id: 'state' },
     transaction,
@@ -136,15 +128,13 @@ function createState({ db, models, transaction, source, country }) {
       title: 'State',
       sort: 'state',
       parent_id: country.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     }
   });
 }
 
 // Create state children
-function createStateChildren({ db, models, transaction, source, state }) {
+function createStateChildren({ db, models, transaction, state }) {
   let children = [
     {
       id: 'county',
@@ -152,9 +142,7 @@ function createStateChildren({ db, models, transaction, source, state }) {
       title: 'County',
       sort: 'county',
       parent_id: state.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     },
     {
       id: 'congress',
@@ -162,9 +150,7 @@ function createStateChildren({ db, models, transaction, source, state }) {
       title: 'Congressional district',
       sort: 'congressional district',
       parent_id: state.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     },
     {
       id: 'state-upper',
@@ -172,9 +158,7 @@ function createStateChildren({ db, models, transaction, source, state }) {
       title: 'State upper',
       sort: 'state upper',
       parent_id: state.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     },
     {
       id: 'state-lower',
@@ -182,9 +166,7 @@ function createStateChildren({ db, models, transaction, source, state }) {
       title: 'State lower',
       sort: 'state lower',
       parent_id: state.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     },
     {
       id: 'water',
@@ -192,9 +174,7 @@ function createStateChildren({ db, models, transaction, source, state }) {
       title: 'Water district',
       sort: 'water',
       parent_id: state.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     },
     {
       id: 'hospital',
@@ -202,9 +182,7 @@ function createStateChildren({ db, models, transaction, source, state }) {
       title: 'Hopsital',
       sort: 'hospital',
       parent_id: state.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     },
     {
       id: 'school',
@@ -212,9 +190,7 @@ function createStateChildren({ db, models, transaction, source, state }) {
       title: 'School',
       sort: 'school',
       parent_id: state.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     },
     {
       id: 'park-district',
@@ -222,9 +198,7 @@ function createStateChildren({ db, models, transaction, source, state }) {
       title: 'Park district',
       sort: 'park',
       parent_id: state.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     },
     {
       id: 'judicial',
@@ -232,9 +206,7 @@ function createStateChildren({ db, models, transaction, source, state }) {
       title: 'Judicial',
       sort: 'judicial',
       parent_id: state.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     }
   ];
 
@@ -251,7 +223,7 @@ function createStateChildren({ db, models, transaction, source, state }) {
 }
 
 // Create county children
-function createCountyChildren({ db, models, transaction, source, county }) {
+function createCountyChildren({ db, models, transaction, county }) {
   let children = [
     {
       id: 'county-local',
@@ -259,9 +231,7 @@ function createCountyChildren({ db, models, transaction, source, county }) {
       title: 'Local',
       sort: 'local county',
       parent_id: county.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     },
     {
       id: 'county-commissioner',
@@ -269,9 +239,7 @@ function createCountyChildren({ db, models, transaction, source, county }) {
       title: 'County commissioner',
       sort: 'county comissioner',
       parent_id: county.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     },
     {
       id: 'county-precinct',
@@ -279,9 +247,7 @@ function createCountyChildren({ db, models, transaction, source, county }) {
       title: 'Precinct',
       sort: 'precinct county',
       parent_id: county.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     }
   ];
 
@@ -298,7 +264,7 @@ function createCountyChildren({ db, models, transaction, source, county }) {
 }
 
 // Create local children
-function createLocalChildren({ db, models, transaction, source, local }) {
+function createLocalChildren({ db, models, transaction, local }) {
   let children = [
     {
       id: 'local-ward',
@@ -306,9 +272,7 @@ function createLocalChildren({ db, models, transaction, source, local }) {
       title: 'Ward',
       sort: 'ward local',
       parent_id: local.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     },
     {
       id: 'local-park-board',
@@ -316,9 +280,7 @@ function createLocalChildren({ db, models, transaction, source, local }) {
       title: 'Park board',
       sort: 'park board local',
       parent_id: local.get('id'),
-      sourceData: {
-        [source.get('id')]: { manual: true }
-      }
+      sourceData: source
     }
   ];
 

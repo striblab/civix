@@ -4,7 +4,7 @@
   "description": "A set of tools around election results, candidates, districts, and related data. ",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "bin": {
     "civix": "bin/civix.js"
@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/striblab/civix#readme",
   "dependencies": {
+    "cached-request": "^1.1.4",
     "command-exists": "^1.2.7",
     "debug": "^3.1.0",
     "dotenv": "^6.0.0",
@@ -37,7 +38,11 @@
     "s3": "^4.4.0",
     "sequelize": "^4.38.0",
     "shapefile": "^0.6.6",
+    "unzipper": "^0.9.3",
     "winston": "^3.0.0",
     "yargs": "^11.0.0"
+  },
+  "devDependencies": {
+    "jest": "^23.6.0"
   }
 }

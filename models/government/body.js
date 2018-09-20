@@ -1,7 +1,7 @@
 /**
  * Body model.
  *
- * A collection of offices
+ * A specific collection of offices, such as the MN State Senate
  */
 
 // Dependencies
