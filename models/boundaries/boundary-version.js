@@ -32,7 +32,18 @@ module.exports = db => {
           },
           fips: {
             type: Sequelize.STRING(128),
-            description: 'The Census FIPS code for the boundary.'
+            description:
+              'The Census FIPS code for the boundary.  See: https://www.census.gov/geo/reference/geoidentifiers.html'
+          },
+          geoid: {
+            type: Sequelize.STRING(128),
+            description:
+              'The Census GEOID code for the boundary.  See: https://www.census.gov/geo/reference/geoidentifiers.html'
+          },
+          affgeoid: {
+            type: Sequelize.STRING(128),
+            description:
+              'The Census American FactFinder GEOID code for the boundary.  See: https://www.census.gov/geo/reference/geoidentifiers.html'
           },
           start: {
             type: Sequelize.DATEONLY(),
@@ -58,6 +69,8 @@ module.exports = db => {
       underscored: true,
       indexes: utils.snakeCaseIndexes([
         { fields: ['fips'] },
+        { fields: ['geoid'] },
+        { fields: ['affgeoid'] },
         { fields: ['localId'] },
         { fields: ['start'] },
         { fields: ['end'] },
