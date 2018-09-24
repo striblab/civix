@@ -8,6 +8,7 @@
 // Dependencies
 const _ = require('lodash');
 const path = require('path');
+const moment = require('moment');
 const { shapes } = require('../../lib/shapefile.js');
 const { download } = require('../../lib/download.js');
 
@@ -130,17 +131,17 @@ async function importDistrict({ congress, district, db, transaction, models }) {
   let boundaryId = `congressional-district-${parsed.fips}`;
   let boundaryVersionId = `${
     congress.congress
-  }-${congress.start.getFullYear()}-${boundaryId}`;
+  }-${congress.start.year()}-${boundaryId}`;
 
   // Get state
   let stateVersion = await models.BoundaryVersion.findOne({
-    where: { fips: p.STATEFP }
+    where: { fips: parsed.state }
   });
   let state = await models.Boundary.findOne({
     where: { id: stateVersion.get('boundary_id') }
   });
   if (!state) {
-    throw new Error(`Unable to find state with FIPS code: ${p.STATEFP}`);
+    throw new Error(`Unable to find state with FIPS code: ${parsed.state}`);
   }
 
   // Create general boundary if needed
@@ -203,6 +204,7 @@ function congresses() {
   let defaultParser = (input, congress) => {
     return {
       localId: `${input['CD' + input.CDSESSN + 'FP']}`,
+      state: input.STATEFP,
       fips: `${input.STATEFP}${input['CD' + input.CDSESSN + 'FP']}`,
       affgeoid: input.AFFGEOID,
       geoid: input.GEOID
@@ -215,34 +217,34 @@ function congresses() {
         url:
           'http://www2.census.gov/geo/tiger/GENZ2017/shp/cb_2017_us_cd115_500k.zip',
         shapefile: 'cb_2017_us_cd115_500k.shp',
-        start: new Date('2017-01-01'),
-        end: new Date('2017-12-31'),
+        start: moment('2017-01-01'),
+        end: moment('2017-12-31'),
         parser: defaultParser
       },
       {
         url:
           'http://www2.census.gov/geo/tiger/GENZ2016/shp/cb_2016_us_cd115_500k.zip',
         shapefile: 'cb_2016_us_cd115_500k.shp',
-        start: new Date('2016-01-01'),
-        end: new Date('2016-12-31'),
+        start: moment('2016-01-01'),
+        end: moment('2016-12-31'),
         parser: defaultParser
       }
     ],
     114: [
       {
         url:
-          'http://www2.census.gov/geo/tiger/GENZ2015/shp/cb_2015_us_cd115_500k.zip',
-        shapefile: 'cb_2015_us_cd115_500k.shp',
-        start: new Date('2015-01-01'),
-        end: new Date('2015-12-31'),
+          'http://www2.census.gov/geo/tiger/GENZ2015/shp/cb_2015_us_cd114_500k.zip',
+        shapefile: 'cb_2015_us_cd114_500k.shp',
+        start: moment('2015-01-01'),
+        end: moment('2015-12-31'),
         parser: defaultParser
       },
       {
         url:
-          'http://www2.census.gov/geo/tiger/GENZ2014/shp/cb_2014_us_cd115_500k.zip',
-        shapefile: 'cb_2014_us_cd115_500k.shp',
-        start: new Date('2014-01-01'),
-        end: new Date('2014-12-31'),
+          'http://www2.census.gov/geo/tiger/GENZ2014/shp/cb_2014_us_cd114_500k.zip',
+        shapefile: 'cb_2014_us_cd114_500k.shp',
+        start: moment('2014-01-01'),
+        end: moment('2014-12-31'),
         parser: defaultParser
       }
     ],
@@ -251,8 +253,8 @@ function congresses() {
         url:
           'http://www2.census.gov/geo/tiger/GENZ2013/cb_2013_us_cd113_500k.zip',
         shapefile: 'cb_2013_us_cd113_500k.shp',
-        start: new Date('2012-01-01'),
-        end: new Date('2013-12-31'),
+        start: moment('2012-01-01'),
+        end: moment('2013-12-31'),
         parser: defaultParser
       }
     ],
@@ -261,8 +263,8 @@ function congresses() {
         url:
           'https://www2.census.gov/geo/tiger/TIGER2011/CD/tl_2011_us_cd112.zip',
         shapefile: 'tl_2011_us_cd112.shp',
-        start: new Date('2010-01-01'),
-        end: new Date('2011-12-31'),
+        start: moment('2010-01-01'),
+        end: moment('2011-12-31'),
         parser: defaultParser
       }
     ],
@@ -271,19 +273,35 @@ function congresses() {
         url:
           'http://www2.census.gov/geo/tiger/GENZ2010/gz_2010_us_500_11_5m.zip',
         shapefile: 'gz_2010_us_500_11_5m.shp',
-        start: new Date('2008-01-01'),
-        end: new Date('2009-12-31'),
-        parser: defaultParser
+        start: moment('2008-01-01'),
+        end: moment('2009-12-31'),
+        parser: (input, congress) => {
+          return {
+            localId: input.CD,
+            state: input.STATE,
+            fips: `${input.STATE}${input.CD}`,
+            affgeoid: input.GEO_ID,
+            geoid: input.GEO_ID ? input.GEO_ID.substr(-4) : null
+          };
+        }
       }
     ],
     110: [
       {
         url:
           'https://www2.census.gov/geo/tiger/PREVGENZ/cd/cd110shp/cd99_110_shp.zip',
-        shapefile: 'cd99_110_shp.shp',
-        start: new Date('2006-01-01'),
-        end: new Date('2007-12-31'),
-        parser: defaultParser
+        shapefile: 'cd99_110.shp',
+        start: moment('2006-01-01'),
+        end: moment('2007-12-31'),
+        parser: (input, congress) => {
+          return {
+            localId: input.CD,
+            state: input.STATE,
+            fips: `${input.STATE}${input.CD}`,
+            affgeoid: null,
+            geoid: `${input.STATE}${input.CD}`
+          };
+        }
       }
     ]
   };
