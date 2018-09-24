@@ -10,6 +10,7 @@ const _ = require('lodash');
 const path = require('path');
 const moment = require('moment');
 const { shapes } = require('../../lib/shapefile.js');
+const { makeSort } = require('../../lib/strings.js');
 const { download } = require('../../lib/download.js');
 
 // Import function
@@ -115,7 +116,7 @@ async function importCountySet({ countySet, db, transaction, models, logger }) {
 async function importCounty({ countySet, county, db, transaction, models }) {
   let p = county.properties;
   let parsed = countySet.parser(p, countySet);
-  let boundaryId = `county-${parsed.geoid}`;
+  let boundaryId = `usa-county-${parsed.geoid}`;
   let boundaryVersionId = `${countySet.start.year()}-${boundaryId}`;
 
   // Get state
@@ -139,8 +140,8 @@ async function importCounty({ countySet, county, db, transaction, models }) {
       name: boundaryId,
       title: `${parsed.name} County`,
       shortTitle: parsed.name,
-      sort: parsed.name.toLowerCase(),
-      localId: parsed.localId,
+      sort: makeSort(parsed.name),
+      localId: parsed.geoid,
       parent_id: state.get('id'),
       division_id: 'county',
       sourceData: {

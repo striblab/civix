@@ -10,6 +10,7 @@ const _ = require('lodash');
 const path = require('path');
 const moment = require('moment');
 const { shapes } = require('../../lib/shapefile.js');
+const { makeSort } = require('../../lib/strings.js');
 const { download } = require('../../lib/download.js');
 
 // Import function
@@ -128,10 +129,13 @@ async function importCongressSet({
 async function importDistrict({ congress, district, db, transaction, models }) {
   let p = district.properties;
   let parsed = congress.parser(p, congress);
-  let boundaryId = `congressional-district-${parsed.fips}`;
+  let boundaryId = `usa-congressional-district-${parsed.geoid}`;
   let boundaryVersionId = `${
     congress.congress
   }-${congress.start.year()}-${boundaryId}`;
+  let title = `${state.get(
+    'title'
+  )} Congressional District ${parsed.localId.replace(/^0+/, '')}`;
 
   // Get state
   let stateVersion = await models.BoundaryVersion.findOne({
@@ -141,7 +145,7 @@ async function importDistrict({ congress, district, db, transaction, models }) {
     where: { id: stateVersion.get('boundary_id') }
   });
   if (!state) {
-    throw new Error(`Unable to find state with FIPS code: ${parsed.state}`);
+    throw new Error(`Unable to find state with GEOID code: ${parsed.geoid}`);
   }
 
   // Create general boundary if needed
@@ -152,13 +156,9 @@ async function importDistrict({ congress, district, db, transaction, models }) {
     defaults: {
       id: boundaryId,
       name: boundaryId,
-      title: `${state.get(
-        'title'
-      )} Congressional District ${parsed.localId.replace(/^0+/, '')}`,
+      title: title,
       shortTitle: `District ${parsed.localId.replace(/^0+/, '')}`,
-      sort: `${state.get('title')} Congressional district ${
-        parsed.localId
-      }`.toLowerCase(),
+      sort: makeSort(title),
       localId: parsed.localId,
       parent_id: state.get('id'),
       division_id: 'congress',

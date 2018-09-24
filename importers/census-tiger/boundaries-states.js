@@ -8,6 +8,7 @@
 const _ = require('lodash');
 const path = require('path');
 const { shapes } = require('../../lib/shapefile.js');
+const { makeSort } = require('../../lib/strings.js');
 const { download } = require('../../lib/download.js');
 
 // Import function
@@ -74,7 +75,7 @@ async function importStates({ states, db, transaction, models }) {
 
   for (let s of states) {
     let p = s.properties;
-    let boundaryId = `state-${p.STUSPS.toLowerCase()}`;
+    let boundaryId = `usa-state-${p.STUSPS.toLowerCase()}`;
     let boundaryVersionId = `2017-${boundaryId}`;
 
     // Boundary
@@ -87,8 +88,8 @@ async function importStates({ states, db, transaction, models }) {
         name: boundaryId,
         title: p.NAME,
         shortTitle: p.STUSPS,
-        sort: p.NAME.toLowerCase(),
-        localId: p.STUSPS,
+        sort: makeSort(p.NAME.toLowerCase()),
+        localId: p.STUSPS.toLowerCase(),
         parent_id: 'country-usa',
         division_id: 'state',
         sourceData: {
