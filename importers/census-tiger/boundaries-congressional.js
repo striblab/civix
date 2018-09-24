@@ -13,7 +13,7 @@ const { shapes } = require('../../lib/shapefile.js');
 const { download } = require('../../lib/download.js');
 
 // Import function
-module.exports = async function coreDataTigerStatesImporter({
+module.exports = async function tigerStatesImporter({
   logger,
   models,
   db,

@@ -1,7 +1,7 @@
 /**
  * Importer for core data: Boundary: States
  *
- * From Census Tiger Lines file: https://www.census.gov/cgi-bin/geo/shapefiles/index.php?year=2017&layergroup=States+%28and+equivalent%29
+ * From Census Tiger Lines file: https://www.census.gov/geo/maps-data/data/cbf/cbf_state.html
  */
 
 // Dependencies
@@ -11,11 +11,7 @@ const { shapes } = require('../../lib/shapefile.js');
 const { download } = require('../../lib/download.js');
 
 // Import function
-module.exports = async function coreDataTigerStatesImporter({
-  logger,
-  models,
-  db
-}) {
+module.exports = async function tigerStatesImporter({ logger, models, db }) {
   logger('info', 'Census TIGER: States importer ...');
   logger(
     'info',
@@ -97,7 +93,8 @@ async function importStates({ states, db, transaction, models }) {
         division_id: 'state',
         sourceData: {
           'census-tiger-states': {
-            about: 'Civix importer, see specific version for original data.'
+            about: 'Civix importer, see specific version for original data.',
+            url: 'https://www.census.gov/geo/maps-data/data/cbf/cbf_state.html'
           }
         }
       }
@@ -124,8 +121,7 @@ async function importStates({ states, db, transaction, models }) {
         sourceData: {
           'census-tiger-states': {
             properties: p,
-            url:
-              'https://www.census.gov/cgi-bin/geo/shapefiles/index.php?year=2017&layergroup=States+%28and+equivalent%29'
+            url: 'https://www.census.gov/geo/maps-data/data/cbf/cbf_state.html'
           }
         }
       }
