@@ -9,9 +9,9 @@
 const _ = require('lodash');
 const fs = require('fs');
 const moment = require('moment');
-const { union, unkinkPolygon } = require('@turf/turf');
+const { union } = require('@turf/turf');
 const reproject = require('../../lib/reproject.js');
-const { makeSort, makeId } = require('../../lib/strings.js');
+const { makeSort } = require('../../lib/strings.js');
 const { download } = require('../../lib/download.js');
 
 // Import function
