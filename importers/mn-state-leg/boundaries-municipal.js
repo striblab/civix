@@ -1,5 +1,5 @@
 /**
- * Minnesota state legislature: State house districts
+ * Minnesota state legislature: MCD
  *
  * From:
  * https://www.gis.leg.mn/html/download.html
@@ -9,6 +9,7 @@
 const _ = require('lodash');
 const fs = require('fs');
 const moment = require('moment');
+const { union, unkinkPolygon } = require('@turf/turf');
 const reproject = require('../../lib/reproject.js');
 const { makeSort, makeId } = require('../../lib/strings.js');
 const { download } = require('../../lib/download.js');
@@ -25,7 +26,7 @@ module.exports = async function mnStateLegStateHouseImporter({
   // Look for year from argv
   if (!argv.year) {
     throw new Error(
-      'A year argument must be provided, for example "--year=2017"'
+      'A year argument must be provided, for example "--year=2018"'
     );
   }
 
@@ -33,12 +34,12 @@ module.exports = async function mnStateLegStateHouseImporter({
   let districtSet = districtSets()[argv.year];
   if (!districtSet) {
     throw new Error(
-      `Unable to find information about District set ${argv.year}`
+      `Unable to find information about Precinct set ${argv.year}`
     );
   }
 
   districtSet.year = argv.year;
-  logger('info', `MN State Leg: State house ${argv.year} ...`);
+  logger('info', `MN State Leg: MCD areas (via precincts) ${argv.year} ...`);
 
   // Start transaction
   const transaction = await db.sequelize.transaction();
@@ -102,6 +103,16 @@ async function importDistrictSet({
   // Get data
   let districts = JSON.parse(fs.readFileSync(dl.output, 'utf-8'));
 
+  // Group
+  let grouped = _.groupBy(districts.features, districtSet.grouping);
+  districts.features = _.map(grouped, group => {
+    return {
+      type: 'Feature',
+      properties: group[0].properties,
+      geometry: group.length > 1 ? union(...group).geometry : group[0].geometry
+    };
+  });
+
   // Reproject and multipolygon
   for (let fi in districts.features) {
     districts.features[fi] = await reproject(
@@ -144,19 +155,22 @@ async function importDistrict({
 }) {
   let p = district.properties;
   let parsed = districtSet.parser(p, districtSet);
-  let boundaryId = `usa-mn-state-lower-${parsed.geoid.toLowerCase()}`;
+  let boundaryId = `usa-mn-county-local-${parsed.geoid.toLowerCase()}`;
   let boundaryVersionId = `${districtSet.start.year()}-${boundaryId}`;
-  let title = `Minnesota State House District ${parsed.localId.replace(
-    /^0+/,
-    ''
-  )}`;
 
-  // Get state
-  let state = await models.Boundary.findOne({
-    where: { localId: 'mn' }
+  // Get county
+  let countyVersion = await models.BoundaryVersion.findOne({
+    where: {
+      id: `${districtSet.countyParentYear}-usa-county-27${parsed.countyFips}`
+    }
   });
-  if (!state) {
-    throw new Error('Unable to find state with localId code: mn');
+  let county = await models.Boundary.findOne({
+    where: { id: countyVersion.get('boundary_id') }
+  });
+  if (!county) {
+    throw new Error(
+      `Unable to find county with FIPS code: ${parsed.countyFips}`
+    );
   }
 
   // Create general boundary if needed
@@ -167,15 +181,16 @@ async function importDistrict({
     defaults: {
       id: boundaryId,
       name: boundaryId,
-      title: title,
-      shortTitle: `District ${parsed.localId.replace(/^0+/, '')}`,
-      sort: makeSort(title),
+      title: parsed.title,
+      shortTitle: parsed.shortTitle,
+      sort: makeSort(parsed.title),
       localId: parsed.localId.toLowerCase(),
-      parent_id: state.get('id'),
-      division_id: 'state-lower',
+      parent_id: county.get('id'),
+      division_id: 'county-local',
       sourceData: {
         'mn-state-leg': {
-          about: 'See specific version for original data.',
+          about:
+            'Calculated from precinct data set.  See specific version for original data.',
           url: 'https://www.gis.leg.mn/html/download.html'
         }
       }
@@ -191,6 +206,7 @@ async function importDistrict({
       id: boundaryVersionId,
       name: boundaryVersionId,
       localId: parsed.localId.toLowerCase(),
+      fips: parsed.fips,
       geoid: parsed.geoid,
       start: districtSet.start,
       end: districtSet.end,
@@ -198,6 +214,8 @@ async function importDistrict({
       boundary_id: boundaryId,
       sourceData: {
         'mn-state-leg': {
+          about:
+            'Calculated from precinct data set.  Data from first row of group.',
           url: 'https://www.gis.leg.mn/html/download.html',
           data: p
         }
@@ -211,38 +229,75 @@ async function importDistrict({
 // Processing each congress
 function districtSets() {
   let defaultParser = input => {
+    let countyFips = input.COUNTYFIPS.toString().padStart(3, '0');
+    let mcdCode = input.MCDCODE.toString().padStart(3, '0');
+    let mcdFips = input.MCDFIPS.toString().padStart(5, '0');
+
+    // Note that some local areas span multiple counties, and each
+    // part has it's own entry.
+
     return {
-      localId: input.DISTRICT.padStart(3, '0'),
-      // GEOID as census uses
-      // https://www.census.gov/geo/maps-data/data/cbf/cbf_sld.html
-      geoid: `27${input.DISTRICT.padStart(3, '0')}`
+      localId: mcdCode,
+      fips: mcdFips,
+      geoid: `27${countyFips}${mcdFips}`,
+      title: input.MCDNAME.replace(/\s+unorg$/i, ' Unorganized Territory')
+        .replace(/\s+twp$/i, ' Township')
+        .trim(),
+      shortTitle: input.MCDNAME.replace(/\s+unorg$/i, '')
+        .replace(/\s+twp$/i, '')
+        .trim(),
+      countyFips
     };
+  };
+  let defaultGrouping = feature => {
+    console.log(feature.properties);
+    return `27${feature.properties.COUNTYFIPS.toString().padStart(
+      3,
+      '0'
+    )}${feature.properties.MCDFIPS.toString().padStart(5, '0')}`;
   };
 
   return {
-    2012: {
+    2018: {
       url:
-        'https://www.gis.leg.mn/php/shptoGeojson.php?file=/geo/data/house/L2012-1',
-      output: 'mn-state-house-2012.geo.json',
-      start: moment('2012-01-01'),
-      end: moment('2021-12-31'),
-      parser: defaultParser
+        'https://www.gis.leg.mn/php/shptoGeojson.php?file=/geo/data/vtd/vtd2018general',
+      output: 'vtd2018general.geo.json',
+      start: moment('2018-01-01'),
+      end: moment('2019-12-31'),
+      parser: defaultParser,
+      grouping: defaultGrouping,
+      countyParentYear: 2017
     },
-    2002: {
+    2016: {
       url:
-        'https://www.gis.leg.mn/php/shptoGeojson.php?file=/geo/data/house/L2002',
-      output: 'mn-state-house-2002.geo.json',
-      start: moment('2002-01-01'),
-      end: moment('2011-12-31'),
-      parser: defaultParser
+        'https://www.gis.leg.mn/php/shptoGeojson.php?file=/geo/data/vtd/vtd2016general',
+      output: 'vtd2016general.geo.json',
+      start: moment('2016-01-01'),
+      end: moment('2017-12-31'),
+      parser: defaultParser,
+      grouping: defaultGrouping,
+      countyParentYear: 2017
     },
-    1994: {
+    2014: {
       url:
-        'https://www.gis.leg.mn/php/shptoGeojson.php?file=/geo/data/house/L1994',
-      output: 'mn-state-house-1994.geo.json',
-      start: moment('1994-01-01'),
-      end: moment('2001-12-31'),
-      parser: defaultParser
+        'https://www.gis.leg.mn/php/shptoGeojson.php?file=/geo/data/vtd/vtd2014general',
+      output: 'vtd2014general.geo.json',
+      start: moment('2014-01-01'),
+      end: moment('2015-12-31'),
+      parser: defaultParser,
+      grouping: defaultGrouping,
+      countyParentYear: 2017
     }
+    // 2012 doesn't have code information for MCDs
+    // 2012: {
+    //   url:
+    //     'https://www.gis.leg.mn/php/shptoGeojson.php?file=/geo/data/vtd/vtd2012general',
+    //   output: 'vtd2014general.geo.json',
+    //   start: moment('2012-01-01'),
+    //   end: moment('2013-12-31'),
+    //   parser: defaultParser,
+    //   grouping: defaultGrouping,
+    //   countyParentYear: 2017
+    // }
   };
 }

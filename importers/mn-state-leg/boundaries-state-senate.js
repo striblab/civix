@@ -144,7 +144,7 @@ async function importDistrict({
 }) {
   let p = district.properties;
   let parsed = districtSet.parser(p, districtSet);
-  let boundaryId = `usa-mn-state-upper-${parsed.localId}`;
+  let boundaryId = `usa-mn-state-upper-${parsed.geoid}`;
   let boundaryVersionId = `${districtSet.start.year()}-${boundaryId}`;
   let title = `Minnesota State Senate District ${parsed.localId.replace(
     /^0+/,
@@ -191,6 +191,7 @@ async function importDistrict({
       id: boundaryVersionId,
       name: boundaryVersionId,
       localId: parsed.localId,
+      geoid: parsed.geoid,
       start: districtSet.start,
       end: districtSet.end,
       geometry: district.geometry,
@@ -211,7 +212,8 @@ async function importDistrict({
 function districtSets() {
   let defaultParser = input => {
     return {
-      localId: input.DISTRICT
+      localId: (input.DISTRICT || input.SENDIST).padStart(2, '0'),
+      geoid: `27${(input.DISTRICT || input.SENDIST).padStart(2, '0')}`
     };
   };
 
@@ -238,11 +240,7 @@ function districtSets() {
       output: 'mn-state-senate-1994.geo.json',
       start: moment('1994-01-01'),
       end: moment('2001-12-31'),
-      parser: input => {
-        return {
-          localId: input.SENDIST.padStart(2, '0')
-        };
-      }
+      parser: defaultParser
     }
   };
 }
