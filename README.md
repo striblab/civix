@@ -66,3 +66,16 @@ Exporting means exporting data from the database to JSON files in your local fil
 ### Publish data
 
 To publish the exported flat files to S3, use `civix publish`
+
+## Data structure and models.
+
+All about the data structure and database schema. See files in `./models/` for more technical information about the database models.
+
+- **Boundaries**: Boundary models describe geographical areas for offices and elections.
+  - A **Boundary** entry describes an area, and connects it to a _Division_ and possible a parent _Boundary_.
+    - For example, the state of Minnesota is a boundary.
+  - A **Boundary Version** describes the actual geographical shape of a boundary for a specific period in time. This entry also may include census fields such as _FIPS_, _GEOID_, or _AFFGEOID_.
+    - For example, Minnesota Congressional District 2 is a boundary, but the specific shape of it as defined by the 2010 Census and started being used in 2012 is the specific boundary version.
+  - A **Division** describes groups and heirarchy of boundaries.
+    - For example, a state is a division, and a county is a divison that is a child of a state.
+- **Government**: Government models describes offices and bodies that have elected officials.
