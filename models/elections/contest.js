@@ -126,11 +126,7 @@ module.exports = db => {
           { fields: ['questionTitle'] },
           { fields: ['voteType'] },
           { fields: ['reporting'] },
-          { fields: ['totalPrecincts'] },
-          {
-            unique: true,
-            fields: ['ElectionId', 'OfficeId', 'PartyId', 'BoundaryVersionId']
-          }
+          { fields: ['totalPrecincts'] }
         ])
       )
     }
@@ -153,10 +149,11 @@ module.exports = db => {
       })
     );
 
-    // A contest is tied to an office
+    // A contest can be associated with an office, but for instance,
+    // a question is not.
     this.__associations.push(
       this.belongsTo(Office, {
-        foreignKey: { allowNull: false }
+        foreignKey: { allowNull: true }
       })
     );
 

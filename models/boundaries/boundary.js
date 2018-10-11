@@ -36,8 +36,10 @@ module.exports = db => {
   model.associate = function({ Division }) {
     this.__associations = [];
 
-    // Parent to another boundary
-    this.__associations.push(this.belongsTo(this, { as: 'parent' }));
+    // Parents to another boundary
+    this.__associations.push(
+      this.belongsToMany(this, { as: 'parents', through: 'boundary_parents' })
+    );
 
     // Boundary has a division
     this.__associations.push(

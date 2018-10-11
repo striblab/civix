@@ -131,27 +131,32 @@ async function importCounty({ countySet, county, db, transaction, models }) {
   }
 
   // Create general boundary if needed
-  let boundary = await db.findOrCreateOne(models.Boundary, {
-    transaction,
-    where: { id: boundaryId },
-    include: models.Boundary.__associations,
-    defaults: {
-      id: boundaryId,
-      name: boundaryId,
-      title: `${parsed.name} County`,
-      shortTitle: parsed.name,
-      sort: makeSort(parsed.name),
-      localId: parsed.geoid,
-      parent_id: state.get('id'),
-      division_id: 'county',
-      sourceData: {
-        'census-tiger-counties': {
-          about: 'See specific version for original data.',
-          url: 'https://www.census.gov/geo/maps-data/data/cbf/cbf_counties.html'
+  let boundary = await db
+    .findOrCreateOne(models.Boundary, {
+      transaction,
+      where: { id: boundaryId },
+      include: models.Boundary.__associations,
+      defaults: {
+        id: boundaryId,
+        name: boundaryId,
+        title: `${parsed.name} County`,
+        shortTitle: parsed.name,
+        sort: makeSort(parsed.name),
+        localId: parsed.geoid,
+        division_id: 'county',
+        sourceData: {
+          'census-tiger-counties': {
+            about: 'See specific version for original data.',
+            url:
+              'https://www.census.gov/geo/maps-data/data/cbf/cbf_counties.html'
+          }
         }
       }
-    }
-  });
+    })
+    .then(async r => {
+      await r[0].addParents([state.get('id')], { transaction });
+      return r;
+    });
 
   // Create boundary version
   let boundaryVersion = await db.findOrCreateOne(models.BoundaryVersion, {

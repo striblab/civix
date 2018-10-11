@@ -79,27 +79,32 @@ async function importStates({ states, db, transaction, models }) {
     let boundaryVersionId = `2017-${boundaryId}`;
 
     // Boundary
-    let boundary = await db.findOrCreateOne(models.Boundary, {
-      transaction,
-      where: { id: boundaryId },
-      include: models.Boundary.__associations,
-      defaults: {
-        id: boundaryId,
-        name: boundaryId,
-        title: p.NAME,
-        shortTitle: p.STUSPS,
-        sort: makeSort(p.NAME.toLowerCase()),
-        localId: p.STUSPS.toLowerCase(),
-        parent_id: 'country-usa',
-        division_id: 'state',
-        sourceData: {
-          'census-tiger-states': {
-            about: 'Civix importer, see specific version for original data.',
-            url: 'https://www.census.gov/geo/maps-data/data/cbf/cbf_state.html'
+    let boundary = await db
+      .findOrCreateOne(models.Boundary, {
+        transaction,
+        where: { id: boundaryId },
+        include: models.Boundary.__associations,
+        defaults: {
+          id: boundaryId,
+          name: boundaryId,
+          title: p.NAME,
+          shortTitle: p.STUSPS,
+          sort: makeSort(p.NAME.toLowerCase()),
+          localId: p.STUSPS.toLowerCase(),
+          division_id: 'state',
+          sourceData: {
+            'census-tiger-states': {
+              about: 'Civix importer, see specific version for original data.',
+              url:
+                'https://www.census.gov/geo/maps-data/data/cbf/cbf_state.html'
+            }
           }
         }
-      }
-    });
+      })
+      .then(async r => {
+        await r[0].addParents(['country-usa'], { transaction });
+        return r;
+      });
 
     // Boundary version
     let boundaryVersion = await db.findOrCreateOne(models.BoundaryVersion, {

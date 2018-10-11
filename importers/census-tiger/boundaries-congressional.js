@@ -133,9 +133,6 @@ async function importDistrict({ congress, district, db, transaction, models }) {
   let boundaryVersionId = `${
     congress.congress
   }-${congress.start.year()}-${boundaryId}`;
-  let title = `${state.get(
-    'title'
-  )} Congressional District ${parsed.localId.replace(/^0+/, '')}`;
 
   // Get state
   let stateVersion = await models.BoundaryVersion.findOne({
@@ -148,28 +145,37 @@ async function importDistrict({ congress, district, db, transaction, models }) {
     throw new Error(`Unable to find state with GEOID code: ${parsed.geoid}`);
   }
 
+  // Make title from state
+  let title = `${state.get(
+    'title'
+  )} Congressional District ${parsed.localId.replace(/^0+/, '')}`;
+
   // Create general boundary if needed
-  let boundary = await db.findOrCreateOne(models.Boundary, {
-    transaction,
-    where: { id: boundaryId },
-    include: models.Boundary.__associations,
-    defaults: {
-      id: boundaryId,
-      name: boundaryId,
-      title: title,
-      shortTitle: `District ${parsed.localId.replace(/^0+/, '')}`,
-      sort: makeSort(title),
-      localId: parsed.localId,
-      parent_id: state.get('id'),
-      division_id: 'congress',
-      sourceData: {
-        'census-tiger-congress': {
-          about: 'See specific version for original data.',
-          url: 'https://www.census.gov/geo/maps-data/data/cbf/cbf_cds.html'
+  let boundary = await db
+    .findOrCreateOne(models.Boundary, {
+      transaction,
+      where: { id: boundaryId },
+      include: models.Boundary.__associations,
+      defaults: {
+        id: boundaryId,
+        name: boundaryId,
+        title: title,
+        shortTitle: `District ${parsed.localId.replace(/^0+/, '')}`,
+        sort: makeSort(title),
+        localId: parsed.localId,
+        division_id: 'congress',
+        sourceData: {
+          'census-tiger-congress': {
+            about: 'See specific version for original data.',
+            url: 'https://www.census.gov/geo/maps-data/data/cbf/cbf_cds.html'
+          }
         }
       }
-    }
-  });
+    })
+    .then(async r => {
+      await r[0].addParents([state.get('id')], { transaction });
+      return r;
+    });
 
   // Create boundary version
   let boundaryVersion = await db.findOrCreateOne(models.BoundaryVersion, {

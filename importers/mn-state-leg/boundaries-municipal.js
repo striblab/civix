@@ -108,7 +108,9 @@ async function importDistrictSet({
   districts.features = _.map(grouped, group => {
     return {
       type: 'Feature',
-      properties: group[0].properties,
+      properties: _.extend(group[0].properties, {
+        fullGroup: _.cloneDeep(_.map(group, 'properties'))
+      }),
       geometry: group.length > 1 ? union(...group).geometry : group[0].geometry
     };
   });
@@ -158,44 +160,36 @@ async function importDistrict({
   let boundaryId = `usa-mn-county-local-${parsed.geoid.toLowerCase()}`;
   let boundaryVersionId = `${districtSet.start.year()}-${boundaryId}`;
 
-  // Get county
-  let countyVersion = await models.BoundaryVersion.findOne({
-    where: {
-      id: `${districtSet.countyParentYear}-usa-county-27${parsed.countyFips}`
-    }
-  });
-  let county = await models.Boundary.findOne({
-    where: { id: countyVersion.get('boundary_id') }
-  });
-  if (!county) {
-    throw new Error(
-      `Unable to find county with FIPS code: ${parsed.countyFips}`
-    );
-  }
+  // Skip county check since we may have multiple
+  let countyIds = parsed.allCounties.map(c => `usa-county-27${c}`);
 
   // Create general boundary if needed
-  let boundary = await db.findOrCreateOne(models.Boundary, {
-    transaction,
-    where: { id: boundaryId },
-    include: models.Boundary.__associations,
-    defaults: {
-      id: boundaryId,
-      name: boundaryId,
-      title: parsed.title,
-      shortTitle: parsed.shortTitle,
-      sort: makeSort(parsed.title),
-      localId: parsed.localId.toLowerCase(),
-      parent_id: county.get('id'),
-      division_id: 'county-local',
-      sourceData: {
-        'mn-state-leg': {
-          about:
-            'Calculated from precinct data set.  See specific version for original data.',
-          url: 'https://www.gis.leg.mn/html/download.html'
+  let boundary = await db
+    .findOrCreateOne(models.Boundary, {
+      transaction,
+      where: { id: boundaryId },
+      include: models.Boundary.__associations,
+      defaults: {
+        id: boundaryId,
+        name: boundaryId,
+        title: parsed.title,
+        shortTitle: parsed.shortTitle,
+        sort: makeSort(parsed.title),
+        localId: parsed.localId.toLowerCase(),
+        division_id: 'county-local',
+        sourceData: {
+          'mn-state-leg': {
+            about:
+              'Calculated from precinct data set.  See specific version for original data.',
+            url: 'https://www.gis.leg.mn/html/download.html'
+          }
         }
       }
-    }
-  });
+    })
+    .then(async r => {
+      await r[0].addParents(countyIds, { transaction });
+      return r;
+    });
 
   // Create boundary version
   let boundaryVersion = await db.findOrCreateOne(models.BoundaryVersion, {
@@ -246,15 +240,16 @@ function districtSets() {
       shortTitle: input.MCDNAME.replace(/\s+unorg$/i, '')
         .replace(/\s+twp$/i, '')
         .trim(),
-      countyFips
+      countyFips,
+      allCounties: _.uniq(
+        input.fullGroup.map(p => {
+          return p.COUNTYFIPS.toString().padStart(3, '0');
+        })
+      )
     };
   };
   let defaultGrouping = feature => {
-    console.log(feature.properties);
-    return `27${feature.properties.COUNTYFIPS.toString().padStart(
-      3,
-      '0'
-    )}${feature.properties.MCDFIPS.toString().padStart(5, '0')}`;
+    return `27${feature.properties.MCDFIPS.toString().padStart(5, '0')}`;
   };
 
   return {

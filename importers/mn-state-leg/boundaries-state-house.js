@@ -160,27 +160,31 @@ async function importDistrict({
   }
 
   // Create general boundary if needed
-  let boundary = await db.findOrCreateOne(models.Boundary, {
-    transaction,
-    where: { id: boundaryId },
-    include: models.Boundary.__associations,
-    defaults: {
-      id: boundaryId,
-      name: boundaryId,
-      title: title,
-      shortTitle: `District ${parsed.localId.replace(/^0+/, '')}`,
-      sort: makeSort(title),
-      localId: parsed.localId.toLowerCase(),
-      parent_id: state.get('id'),
-      division_id: 'state-lower',
-      sourceData: {
-        'mn-state-leg': {
-          about: 'See specific version for original data.',
-          url: 'https://www.gis.leg.mn/html/download.html'
+  let boundary = await db
+    .findOrCreateOne(models.Boundary, {
+      transaction,
+      where: { id: boundaryId },
+      include: models.Boundary.__associations,
+      defaults: {
+        id: boundaryId,
+        name: boundaryId,
+        title: title,
+        shortTitle: `District ${parsed.localId.replace(/^0+/, '')}`,
+        sort: makeSort(title),
+        localId: parsed.localId.toLowerCase(),
+        division_id: 'state-lower',
+        sourceData: {
+          'mn-state-leg': {
+            about: 'See specific version for original data.',
+            url: 'https://www.gis.leg.mn/html/download.html'
+          }
         }
       }
-    }
-  });
+    })
+    .then(async r => {
+      await r[0].addParents([state.get('id')], { transaction });
+      return r;
+    });
 
   // Create boundary version
   let boundaryVersion = await db.findOrCreateOne(models.BoundaryVersion, {
