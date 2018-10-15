@@ -157,7 +157,7 @@ async function importDistrict({
 }) {
   let p = district.properties;
   let parsed = districtSet.parser(p, districtSet);
-  let boundaryId = `usa-mn-county-local-${parsed.fips.toLowerCase()}`;
+  let boundaryId = `usa-mn-county-local-27${parsed.fips.toLowerCase()}`;
   let boundaryVersionId = `${districtSet.start.year()}-${boundaryId}`;
 
   // Skip county check since we may have multiple

@@ -1,5 +1,5 @@
 /**
- * Minnesota state legislature: City Wards
+ * Minnesota state legislature: Park Board
  *
  * From:
  * https://www.gis.leg.mn/html/download.html
@@ -34,12 +34,12 @@ module.exports = async function mnStateLegStateHouseImporter({
   let districtSet = districtSets()[argv.year];
   if (!districtSet) {
     throw new Error(
-      `Unable to find information about City Wards set ${argv.year}`
+      `Unable to find information about Park Board set ${argv.year}`
     );
   }
 
   districtSet.year = argv.year;
-  logger('info', `MN State Leg: City Wards ${argv.year} ...`);
+  logger('info', `MN State Leg: Park Board ${argv.year} ...`);
 
   // Start transaction
   const transaction = await db.sequelize.transaction();
@@ -160,7 +160,7 @@ async function importDistrict({
 }) {
   let p = district.properties;
   let parsed = districtSet.parser(p, districtSet);
-  let boundaryId = `usa-mn-local-ward-27${parsed.mcdFips.toLowerCase()}-${parsed.localId.toLowerCase()}`;
+  let boundaryId = `usa-mn-local-park-board-27${parsed.mcdFips.toLowerCase()}-${parsed.localId.toLowerCase()}`;
   let boundaryVersionId = `${districtSet.start.year()}-${boundaryId}`;
   let muncipalityId = `usa-mn-county-local-27${parsed.mcdFips.toLowerCase()}`;
 
@@ -229,22 +229,22 @@ async function importDistrict({
 // Processing each set of districts
 function districtSets() {
   let defaultFilter = feature => {
-    return !!feature.properties.WARD;
+    return (
+      feature.properties.PARKDIST &&
+      feature.properties.PARKDIST_N.match(/park.*board/i)
+    );
   };
   let defaultGrouping = feature => {
-    return `${feature.properties.MCDFIPS}-${feature.properties.WARD}`;
+    return `${feature.properties.MCDFIPS}-${feature.properties.PARKDIST}`;
   };
   let defaultParser = input => {
-    let ward = input.WARD.replace(/^(w-)/i, '');
     let mcdFips = input.MCDFIPS.toString().padStart(5, '0');
 
     return {
       mcdFips,
-      localId: ward.match(/[0-9]+/) ? ward.padStart(2, '0') : ward,
-      title: `${input.MCDNAME.replace(/\s+unorg$/i, ' Unorganized Territory')
-        .replace(/\s+twp$/i, ' Township')
-        .trim()} Ward ${ward.replace(/^0+/, '')}`,
-      shortTitle: `Ward ${ward.replace(/^0+/, '')}`
+      localId: input.PARKDIST.toString().padStart(2, '0'),
+      title: `${input.PARKDIST_N} District ${input.PARKDIST}`,
+      shortTitle: `District ${input.PARKDIST}`
     };
   };
 

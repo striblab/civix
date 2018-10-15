@@ -1,5 +1,5 @@
 /**
- * Minnesota state legislature: City Wards
+ * Minnesota state legislature: Park Districts
  *
  * From:
  * https://www.gis.leg.mn/html/download.html
@@ -34,12 +34,12 @@ module.exports = async function mnStateLegStateHouseImporter({
   let districtSet = districtSets()[argv.year];
   if (!districtSet) {
     throw new Error(
-      `Unable to find information about City Wards set ${argv.year}`
+      `Unable to find information about Park Districts set ${argv.year}`
     );
   }
 
   districtSet.year = argv.year;
-  logger('info', `MN State Leg: City Wards ${argv.year} ...`);
+  logger('info', `MN State Leg: Park Districts ${argv.year} ...`);
 
   // Start transaction
   const transaction = await db.sequelize.transaction();
@@ -160,17 +160,14 @@ async function importDistrict({
 }) {
   let p = district.properties;
   let parsed = districtSet.parser(p, districtSet);
-  let boundaryId = `usa-mn-local-ward-27${parsed.mcdFips.toLowerCase()}-${parsed.localId.toLowerCase()}`;
+  let boundaryId = `usa-mn-park-district-27${parsed.localId.toLowerCase()}`;
   let boundaryVersionId = `${districtSet.start.year()}-${boundaryId}`;
-  let muncipalityId = `usa-mn-county-local-27${parsed.mcdFips.toLowerCase()}`;
 
-  // Get munipcal
-  let muncipality = await models.Boundary.findOne({
-    where: { id: muncipalityId }
-  });
-  if (!muncipality) {
-    throw new Error(`Unable to find muncipality with code: ${muncipalityId}`);
-  }
+  // Could have multiple county parents
+  let countyIds = parsed.allCounties.map(c => `usa-county-27${c}`);
+
+  // State parent
+  let stateId = 'usa-state-mn';
 
   // Create general boundary if needed
   let boundary = await db
@@ -185,7 +182,7 @@ async function importDistrict({
         shortTitle: parsed.shortTitle,
         sort: makeSort(parsed.title),
         localId: parsed.localId.toLowerCase(),
-        division_id: 'local-ward',
+        division_id: 'hospital',
         sourceData: {
           'mn-state-leg': {
             about: 'See specific version for original data.',
@@ -195,7 +192,7 @@ async function importDistrict({
       }
     })
     .then(async r => {
-      await r[0].addParents([muncipality.get('id')], {
+      await r[0].addParents(_.filter([].concat(countyIds).concat([stateId])), {
         transaction
       });
       return r;
@@ -229,22 +226,24 @@ async function importDistrict({
 // Processing each set of districts
 function districtSets() {
   let defaultFilter = feature => {
-    return !!feature.properties.WARD;
+    return (
+      feature.properties.PARKDIST &&
+      feature.properties.PARKDIST_N.match(/park.*district/i)
+    );
   };
   let defaultGrouping = feature => {
-    return `${feature.properties.MCDFIPS}-${feature.properties.WARD}`;
+    return feature.properties.PARKDIST.toString().padStart(2, '0');
   };
   let defaultParser = input => {
-    let ward = input.WARD.replace(/^(w-)/i, '');
-    let mcdFips = input.MCDFIPS.toString().padStart(5, '0');
-
     return {
-      mcdFips,
-      localId: ward.match(/[0-9]+/) ? ward.padStart(2, '0') : ward,
-      title: `${input.MCDNAME.replace(/\s+unorg$/i, ' Unorganized Territory')
-        .replace(/\s+twp$/i, ' Township')
-        .trim()} Ward ${ward.replace(/^0+/, '')}`,
-      shortTitle: `Ward ${ward.replace(/^0+/, '')}`
+      localId: input.PARKDIST.toString().padStart(2, '0'),
+      title: `${input.PARKDIST_N} ${input.PARKDIST}`,
+      shortTitle: `District ${input.PARKDIST}`,
+      allCounties: _.uniq(
+        input.fullGroup.map(p => {
+          return p.COUNTYFIPS.toString().padStart(3, '0');
+        })
+      )
     };
   };
 
@@ -281,18 +280,17 @@ function districtSets() {
       filter: defaultFilter,
       grouping: defaultGrouping,
       countyParentYear: 2017
+    },
+    2012: {
+      url:
+        'https://www.gis.leg.mn/php/shptoGeojson.php?file=/geo/data/vtd/vtd2012general',
+      output: 'vtd2014general.geo.json',
+      start: moment('2012-01-01'),
+      end: moment('2013-12-31'),
+      parser: defaultParser,
+      filter: defaultFilter,
+      grouping: defaultGrouping,
+      countyParentYear: 2017
     }
-    // No MCD data
-    // 2012: {
-    //   url:
-    //     'https://www.gis.leg.mn/php/shptoGeojson.php?file=/geo/data/vtd/vtd2012general',
-    //   output: 'vtd2014general.geo.json',
-    //   start: moment('2012-01-01'),
-    //   end: moment('2013-12-31'),
-    //   parser: defaultParser,
-    //   filter: defaultFilter,
-    //   grouping: defaultGrouping,
-    //   countyParentYear: 2017
-    // }
   };
 }
