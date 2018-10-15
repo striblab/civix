@@ -169,10 +169,10 @@ function createStateChildren({ db, models, transaction, state }) {
       sourceData: source
     },
     {
-      id: 'water',
-      name: 'water',
-      title: 'Water district',
-      sort: 'water',
+      id: 'soil-water',
+      name: 'soil-water',
+      title: 'Soil and water conservation district',
+      sort: 'soil water',
       parent_id: state.get('id'),
       sourceData: source
     },

@@ -157,7 +157,7 @@ async function importDistrict({
 }) {
   let p = district.properties;
   let parsed = districtSet.parser(p, districtSet);
-  let boundaryId = `usa-mn-county-local-${parsed.geoid.toLowerCase()}`;
+  let boundaryId = `usa-mn-county-local-${parsed.fips.toLowerCase()}`;
   let boundaryVersionId = `${districtSet.start.year()}-${boundaryId}`;
 
   // Skip county check since we may have multiple
@@ -223,7 +223,6 @@ async function importDistrict({
 // Processing each congress
 function districtSets() {
   let defaultParser = input => {
-    let countyFips = input.COUNTYFIPS.toString().padStart(3, '0');
     let mcdCode = input.MCDCODE.toString().padStart(3, '0');
     let mcdFips = input.MCDFIPS.toString().padStart(5, '0');
 
@@ -233,14 +232,14 @@ function districtSets() {
     return {
       localId: mcdCode,
       fips: mcdFips,
-      geoid: `27${countyFips}${mcdFips}`,
+      // This is fuzzy since a municpal can have multiple counties
+      //geoid: `27${countyFips}${mcdFips}`,
       title: input.MCDNAME.replace(/\s+unorg$/i, ' Unorganized Territory')
         .replace(/\s+twp$/i, ' Township')
         .trim(),
       shortTitle: input.MCDNAME.replace(/\s+unorg$/i, '')
         .replace(/\s+twp$/i, '')
         .trim(),
-      countyFips,
       allCounties: _.uniq(
         input.fullGroup.map(p => {
           return p.COUNTYFIPS.toString().padStart(3, '0');

@@ -1,5 +1,5 @@
 /**
- * Minnesota state legislature: Hosptial Districts
+ * Minnesota state legislature: Soil and Water Conservation Districts
  *
  * From:
  * https://www.gis.leg.mn/html/download.html
@@ -34,12 +34,17 @@ module.exports = async function mnStateLegStateHouseImporter({
   let districtSet = districtSets()[argv.year];
   if (!districtSet) {
     throw new Error(
-      `Unable to find information about Hosptial Districts set ${argv.year}`
+      `Unable to find information about Soil and Water Conservation Districts set ${
+        argv.year
+      }`
     );
   }
 
   districtSet.year = argv.year;
-  logger('info', `MN State Leg: Hosptial Districts ${argv.year} ...`);
+  logger(
+    'info',
+    `MN State Leg: Soil and Water Conservation Districts ${argv.year} ...`
+  );
 
   // Start transaction
   const transaction = await db.sequelize.transaction();
@@ -160,7 +165,7 @@ async function importDistrict({
 }) {
   let p = district.properties;
   let parsed = districtSet.parser(p, districtSet);
-  let boundaryId = `usa-mn-hospital-district-${parsed.localId.toLowerCase()}`;
+  let boundaryId = `usa-mn-soil-water-${parsed.localId.toLowerCase()}`;
   let boundaryVersionId = `${districtSet.start.year()}-${boundaryId}`;
 
   // Could have multiple county parents
@@ -170,6 +175,7 @@ async function importDistrict({
   let stateId = 'usa-state-mn';
 
   // Create general boundary if needed
+  console.log(parsed.shortTitle);
   let boundary = await db
     .findOrCreateOne(models.Boundary, {
       transaction,
@@ -182,7 +188,7 @@ async function importDistrict({
         shortTitle: parsed.shortTitle,
         sort: makeSort(parsed.title),
         localId: parsed.localId.toLowerCase(),
-        division_id: 'hospital',
+        division_id: 'soil-water',
         sourceData: {
           'mn-state-leg': {
             about: 'See specific version for original data.',
@@ -226,21 +232,27 @@ async function importDistrict({
 // Processing each set of districts
 function districtSets() {
   let defaultFilter = feature => {
-    return !!feature.properties.HOSPDIST;
+    return !!feature.properties.SWCDIST || !!feature.properties.SOILWDIST;
   };
   let defaultGrouping = feature => {
-    return feature.properties.HOSPDIST.toString().padStart(4, '0');
+    return (feature.properties.SWCDIST || feature.properties.SOILWDIST)
+      .toString()
+      .padStart(4, '0');
   };
   let defaultParser = input => {
     // 2012 doesnt have a district name
     return {
-      localId: `27-${input.HOSPDIST.toString().padStart(4, '0')}`,
-      title: input.HOSPDIST_N
-        ? `${input.HOSPDIST_N.toString()} Hospital District`
-        : `Hospital District ${input.HOSPDIST.toString()}`,
-      shortTitle: input.HOSPDIST_N
-        ? `${input.HOSPDIST_N.toString()}`
-        : `District ${input.HOSPDIST.toString()}`,
+      localId: `27-${(input.SWCDIST || input.SOILWDIST)
+        .toString()
+        .padStart(4, '0')}`,
+      title: input.SWCDIST_N
+        ? `${input.SWCDIST_N.toString()} Soil and Water Conservation District`
+        : `Soil and Water Conservation District ${(
+          input.SWCDIST || input.SOILWDIST
+        ).toString()}`,
+      shortTitle: input.SWCDIST_N
+        ? `${input.SWCDIST_N.toString()}`
+        : `District ${(input.SWCDIST || input.SOILWDIST).toString()}`,
       allCounties: _.uniq(
         input.fullGroup.map(p => {
           return p.COUNTYFIPS.toString().padStart(3, '0');
