@@ -280,17 +280,18 @@ function districtSets() {
       filter: defaultFilter,
       grouping: defaultGrouping,
       countyParentYear: 2017
-    },
-    2012: {
-      url:
-        'https://www.gis.leg.mn/php/shptoGeojson.php?file=/geo/data/vtd/vtd2012general',
-      output: 'vtd2014general.geo.json',
-      start: moment('2012-01-01'),
-      end: moment('2013-12-31'),
-      parser: defaultParser,
-      filter: defaultFilter,
-      grouping: defaultGrouping,
-      countyParentYear: 2017
     }
+    // PARKDIST_N doesn't exists so hard to know what set
+    // 2012: {
+    //   url:
+    //     'https://www.gis.leg.mn/php/shptoGeojson.php?file=/geo/data/vtd/vtd2012general',
+    //   output: 'vtd2014general.geo.json',
+    //   start: moment('2012-01-01'),
+    //   end: moment('2013-12-31'),
+    //   parser: defaultParser,
+    //   filter: defaultFilter,
+    //   grouping: defaultGrouping,
+    //   countyParentYear: 2017
+    // }
   };
 }

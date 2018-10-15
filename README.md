@@ -59,6 +59,20 @@ Getting data is done with the `civix import` command.
     - Year options: `2014`, `2016`, `2018`
   - MN state precincts: `civix import mn-state-leg/boundaries-precincts --year=XXX`
     - Year options: `2012`, `2014`, `2016`, `2018`
+  - MN county commissioners: `civix import mn-state-leg/boundaries-county-commissioner --year=XXX`
+    - Year options: `2012`, `2014`, `2016`, `2018`
+  - MN hospital districts: `civix import mn-state-leg/boundaries-hosptials --year=XXX`
+    - Year options: `2012`, `2014`, `2016`, `2018`
+  - MN local wards: `civix import mn-state-leg/boundaries-wards --year=XXX`
+    - Year options: `2014`, `2016`, `2018`
+  - MN local park boards: `civix import mn-state-leg/boundaries-park-board --year=XXX`
+    - Year options: `2014`, `2016`, `2018`
+  - MN park districts: `civix import mn-state-leg/boundaries-park-district --year=XXX`
+    - Year options: `2012`, `2014`, `2016`, `2018`
+  - MN park districts: `civix import mn-state-leg/boundaries-park-district --year=XXX`
+    - Year options: `2014`, `2016`, `2018`
+  - MN soil and water conservation districts: `civix import mn-state-leg/boundaries-soil-water --year=XXX`
+    - Year options: `2012`, `2014`, `2016`, `2018`
 
 _TODO more_
 
