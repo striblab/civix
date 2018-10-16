@@ -11,33 +11,27 @@ const ensureElexSource = require('./source-ap-elex.js');
 module.exports = async function coreDataElexRacesImporter({
   logger,
   models,
-  db
+  db,
+  argv
 }) {
   logger('info', 'AP (via Elex) Races importer...');
 
-  // Election information
-  const electionString = '2018-08-14';
-  const electionDate = new Date(electionString);
-  const electionDateId = electionString.replace(/-/g, '');
-  const electionRecord = {
-    id: `mn-${electionDateId}`,
-    name: `mn-${electionDateId}`,
-    title: `Minnesota Primary ${electionString}`,
-    shortTitle: 'MN Primary',
-    sort: `${electionDateId} minnesota primary`,
-    date: electionDate,
-    type: 'primary',
-    boundary_id: 'state-mn',
-    sourceData: {
-      'civix-ap-elex': {
-        manual: true
-      }
-    }
-  };
+  // Make sure election is given
+  if (!argv.election) {
+    throw new Error(
+      'An election argument must be provided, for example "--election="2018-11-06"'
+    );
+  }
+
+  // Make sure state is given
+  if (!argv.election) {
+    throw new Error(
+      'An state argument must be provided, for example "--state="mn'
+    );
+  }
 
   // Get elex races
-  // TODO: Get election from argv
-  const elex = new Elex({ logger, defaultElection: electionString });
+  const elex = new Elex({ logger, defaultElection: argv.election });
   const races = await elex.races();
 
   // Create transaction
@@ -48,19 +42,15 @@ module.exports = async function coreDataElexRacesImporter({
     // Gather results
     let results = [];
 
-    // Make common source
-    let sourceResult = await ensureElexSource({ models, transaction });
-    results.push(sourceResult);
-    let source = sourceResult[0];
-
-    // Create election
-    let electionResult = await db.findOrCreateOne(models.Election, {
-      where: { id: electionRecord.id },
-      defaults: electionRecord,
-      transaction
+    // Get election
+    let election = await models.Election.find({
+      id: `${argv.state}-${argv.election}`
     });
-    results.push(electionResult);
-    let election = electionResult[0];
+    if (!election) {
+      throw new Error(
+        `Unable to find election: ${argv.state}-${argv.election}`
+      );
+    }
 
     // Make contests (AP calls them races)
     results = results.concat(
@@ -283,17 +273,15 @@ async function importContest({
   let office = {
     id: officeId,
     name: officeId,
-    title: _
-      .filter([race.officename, race.seatname, race.subseatname])
-      .join(' '),
-    shortTitle: _
-      .filter([
-        race.seatname && race.seatname.match(/^[0-9]+$/)
-          ? `District ${race.seatname}`
-          : race.seatname,
-        race.subseatname
-      ])
-      .join(' '),
+    title: _.filter([race.officename, race.seatname, race.subseatname]).join(
+      ' '
+    ),
+    shortTitle: _.filter([
+      race.seatname && race.seatname.match(/^[0-9]+$/)
+        ? `District ${race.seatname}`
+        : race.seatname,
+      race.subseatname
+    ]).join(' '),
     sort: db.makeSort(
       _.filter([race.officename, race.seatname, race.subseatname]).join(' ')
     ),
@@ -329,35 +317,29 @@ async function importContest({
     party_id: party ? party.get('id') : undefined,
     id: contestId,
     name: contestId,
-    title: _
-      .filter([
+    title: _.filter([
+      race.officename,
+      race.seatname,
+      race.subseatname,
+      party ? party.get('title') : undefined
+    ]).join(' '),
+    shortTitle: _.filter(
+      party
+        ? [party.get('shortTitle') || party.get('title'), 'Primary']
+        : [
+          race.seatname && race.seatname.match(/^[0-9]+$/)
+            ? `District ${race.seatname}`
+            : race.seatname,
+          race.subseatname
+        ]
+    ).join(' '),
+    sort: db.makeSort(
+      _.filter([
         race.officename,
         race.seatname,
         race.subseatname,
         party ? party.get('title') : undefined
-      ])
-      .join(' '),
-    shortTitle: _
-      .filter(
-        party
-          ? [party.get('shortTitle') || party.get('title'), 'Primary']
-          : [
-            race.seatname && race.seatname.match(/^[0-9]+$/)
-              ? `District ${race.seatname}`
-              : race.seatname,
-            race.subseatname
-          ]
-      )
-      .join(' '),
-    sort: db.makeSort(
-      _
-        .filter([
-          race.officename,
-          race.seatname,
-          race.subseatname,
-          party ? party.get('title') : undefined
-        ])
-        .join(' ')
+      ]).join(' ')
     ),
     localId: undefined,
     apId: race.id,

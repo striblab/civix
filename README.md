@@ -17,6 +17,11 @@ The long term goal is: `npm install civix -g`
 
 In the meantime, clone the project and do: `npm install && npm link`
 
+Install dependencies:
+
+- [Civix](https://elex.readthedocs.io/): `pip install elex`
+- [MN Elections API](https://github.com/striblab/mn-elections-api):
+
 ### Configuration
 
 - `CIVIC_LOGS`: Path to where logs, defaults to `.logs` in the current working directory.
@@ -25,6 +30,8 @@ In the meantime, clone the project and do: `npm install && npm link`
 - `CIVIX_DATABASE_URI`: Database URI
 - `AP_API_KEY`: Used by Elex to get AP data
 - `CIVIX_ELEX_TEST`: Whether to use test data from AP via Elex.
+- `SOS_FTP_USER`: The FTP username to access to MN Secretary of State FTP site.
+- `SOS_FTP_PASS`: The FTP password to access to MN Secretary of State FTP site.
 
 ### Setting up the database.
 
