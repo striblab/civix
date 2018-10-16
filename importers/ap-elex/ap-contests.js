@@ -1,11 +1,13 @@
 /**
- * Get races for an election
+ * Get contests for an election
+ *
+ * Note that AP calls contests = races
  */
 
 // Dependencies
 const _ = require('lodash');
 const Elex = require('../../lib/elex.js').Elex;
-const ensureElexSource = require('./source-ap-elex.js');
+const contestParser = require('./lib/ap-elex-contests.js');
 
 // Import function
 module.exports = async function coreDataElexRacesImporter({
@@ -24,15 +26,16 @@ module.exports = async function coreDataElexRacesImporter({
   }
 
   // Make sure state is given
-  if (!argv.election) {
+  if (!argv.state) {
     throw new Error(
       'An state argument must be provided, for example "--state="mn'
     );
   }
 
-  // Get elex races
+  // Get elex races.  We use the results to set things up, since
+  // it has more details and sub-contests
   const elex = new Elex({ logger, defaultElection: argv.election });
-  const races = await elex.races();
+  const results = await elex.results();
 
   // Create transaction
   const transaction = await db.sequelize.transaction();
@@ -40,11 +43,13 @@ module.exports = async function coreDataElexRacesImporter({
   // Wrap to catch any issues and rollback
   try {
     // Gather results
-    let results = [];
+    let importResults = [];
 
     // Get election
-    let election = await models.Election.find({
-      id: `${argv.state}-${argv.election}`
+    let election = await models.Election.findOne({
+      where: {
+        id: `usa-${argv.state}-${argv.election.replace(/-/g, '')}`
+      }
     });
     if (!election) {
       throw new Error(
@@ -52,21 +57,29 @@ module.exports = async function coreDataElexRacesImporter({
       );
     }
 
+    // Filter contests to just the top level
+    let contests = _.filter(results, r => {
+      return (
+        r.statepostal === argv.state.toUpperCase() &&
+        r.ballotorder === 1 &&
+        r.reportingunitid.match(/^state/i)
+      );
+    });
+
     // Make contests (AP calls them races)
-    results = results.concat(
+    importResults = importResults.concat(
       await importContests({
-        races,
+        contests,
         db,
         transaction,
         models,
-        source,
         election
       })
     );
 
     // Log changes
     _.filter(
-      results.forEach(u => {
+      importResults.forEach(u => {
         logger(
           'info',
           `[${u[0].constructor.name}] ${u[1] ? 'Created' : 'Existed'}: ${
@@ -90,7 +103,7 @@ module.exports = async function coreDataElexRacesImporter({
 
 // Import contests
 async function importContests({
-  races,
+  contests,
   db,
   models,
   transaction,
@@ -98,6 +111,11 @@ async function importContests({
   election
 }) {
   let results = [];
+
+  for (let c of contests) {
+    contestParser(c, { election });
+  }
+  sdlkfjsldkfj();
 
   for (let r of races) {
     results = results.concat(

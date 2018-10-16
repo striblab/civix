@@ -42,8 +42,8 @@ module.exports = async function mnElectionsMNContestsImporter({
         election.primary ? 'Primary' : 'General'
       } ${dateString}`;
       let electionRecord = {
-        id: `mn-${election.id}`,
-        name: `mn-${election.id}`,
+        id: `usa-mn-${election.id}`,
+        name: `usa-mn-${election.id}`,
         title: title,
         shortTitle: `MN ${election.special ? 'Special ' : ''}${
           election.primary ? 'Primary' : 'General'

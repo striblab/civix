@@ -29,9 +29,9 @@ Install dependencies:
   - `DEBUG=civix:*`: Specific debugging
 - `CIVIX_DATABASE_URI`: Database URI
 - `AP_API_KEY`: Used by Elex to get AP data
-- `CIVIX_ELEX_TEST`: Whether to use test data from AP via Elex.
 - `SOS_FTP_USER`: The FTP username to access to MN Secretary of State FTP site.
 - `SOS_FTP_PASS`: The FTP password to access to MN Secretary of State FTP site.
+- `CIVIX_TEST_RESULTS`: Whether to use test data from AP or MN Elections API.
 
 ### Setting up the database.
 

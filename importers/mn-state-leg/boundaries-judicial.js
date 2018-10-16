@@ -1,5 +1,5 @@
 /**
- * Minnesota state legislature: Soil and Water Conservation Districts
+ * Minnesota state legislature: Judicial/District Courts
  *
  * From:
  * https://www.gis.leg.mn/html/download.html
@@ -34,17 +34,14 @@ module.exports = async function mnStateLegStateHouseImporter({
   let districtSet = districtSets()[argv.year];
   if (!districtSet) {
     throw new Error(
-      `Unable to find information about Soil and Water Conservation Districts set ${
+      `Unable to find information about Judicial/District Courts set ${
         argv.year
       }`
     );
   }
 
   districtSet.year = argv.year;
-  logger(
-    'info',
-    `MN State Leg: Soil and Water Conservation Districts ${argv.year} ...`
-  );
+  logger('info', `MN State Leg: Judicial/District Courts ${argv.year} ...`);
 
   // Start transaction
   const transaction = await db.sequelize.transaction();
@@ -165,7 +162,7 @@ async function importDistrict({
 }) {
   let p = district.properties;
   let parsed = districtSet.parser(p, districtSet);
-  let boundaryId = `usa-mn-soil-water-${parsed.localId.toLowerCase()}`;
+  let boundaryId = `usa-mn-judicial-${parsed.localId.toLowerCase()}`;
   let boundaryVersionId = `${districtSet.start.year()}-${boundaryId}`;
 
   // Could have multiple county parents
@@ -187,7 +184,7 @@ async function importDistrict({
         shortTitle: parsed.shortTitle,
         sort: makeSort(parsed.title),
         localId: parsed.localId.toLowerCase(),
-        division_id: 'soil-water',
+        division_id: 'judicial',
         sourceData: {
           'mn-state-leg': {
             about: 'See specific version for original data.',
@@ -231,27 +228,25 @@ async function importDistrict({
 // Processing each set of districts
 function districtSets() {
   let defaultFilter = feature => {
-    return !!feature.properties.SWCDIST || !!feature.properties.SOILWDIST;
+    return !!feature.properties.JUDDIST || !!feature.properties.JUDDIST;
   };
   let defaultGrouping = feature => {
-    return (feature.properties.SWCDIST || feature.properties.SOILWDIST)
+    return (feature.properties.JUDDIST || feature.properties.JUDDIST)
       .toString()
-      .padStart(4, '0');
+      .padStart(2, '0');
   };
   let defaultParser = input => {
     // 2012 doesnt have a district name
     return {
-      localId: `27-${(input.SWCDIST || input.SOILWDIST)
+      localId: `27-${(input.JUDDIST || input.JUDDIST)
         .toString()
-        .padStart(4, '0')}`,
-      title: input.SWCDIST_N
-        ? `${input.SWCDIST_N.toString()} Soil and Water Conservation District`
-        : `Soil and Water Conservation District ${(
-          input.SWCDIST || input.SOILWDIST
-        ).toString()}`,
-      shortTitle: input.SWCDIST_N
-        ? `${input.SWCDIST_N.toString()}`
-        : `District ${(input.SWCDIST || input.SOILWDIST).toString()}`,
+        .padStart(2, '0')}`,
+      title: `District Court District ${(input.JUDDIST || input.JUDDIST)
+        .toString()
+        .replace(/^0+/, '')}`,
+      shortTitle: `District ${(input.JUDDIST || input.JUDDIST)
+        .toString()
+        .replace(/^0+/, '')}`,
       allCounties: _.uniq(
         input.fullGroup.map(p => {
           return p.COUNTYFIPS.toString().padStart(3, '0');
