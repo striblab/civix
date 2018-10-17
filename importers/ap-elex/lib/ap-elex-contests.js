@@ -29,8 +29,19 @@ function parseRouter(data, options = {}) {
     return parseStateDistrictCourt(data, options);
   }
   else if (data.officename.match(/u.s..*house/i)) {
-    console.log(parseUSHouse(data, options));
     return parseUSHouse(data, options);
+  }
+  else if (data.officename.match(/u.s..*senate/i)) {
+    return parseUSSenate(data, options);
+  }
+  else if (data.officename.match(/state.*senate/i)) {
+    return parseStateSenate(data, options);
+  }
+  else if (data.officename.match(/state.*house/i)) {
+    return parseStateHouse(data, options);
+  }
+  else {
+    throw new Error(`Unable to match: ${data.officename}`);
   }
 }
 
@@ -105,7 +116,7 @@ function parseStateSupremeAppealsCourt(data, options = {}) {
       name: bodyId,
       title: `Minnesota ${data.officename}`,
       shortTitle: data.officename,
-      sort: makeSort(data.officename),
+      sort: makeSort(`Minnesota ${data.officename}`),
       stateCode: 'mn'
     },
 
@@ -170,7 +181,7 @@ function parseStateDistrictCourt(data, options = {}) {
       name: bodyId,
       title: `Minnesota ${data.officename}`,
       shortTitle: data.officename,
-      sort: makeSort(data.officename),
+      sort: makeSort(`Minnesota ${data.officename}`),
       stateCode: 'mn'
     },
 
@@ -227,7 +238,7 @@ function parseUSHouse(data, options = {}) {
       name: bodyId,
       title: 'United States House of Representatives',
       shortTitle: 'U.S. House',
-      sort: makeSort(data.officename)
+      sort: makeSort('United States House of Representatives')
     },
 
     office: {
@@ -257,6 +268,202 @@ function parseUSHouse(data, options = {}) {
       apId: data.raceid,
       type: parseContestType(data.racetypeid),
       special: false,
+      elect: undefined,
+      uncontested: data.uncontested,
+      partisan: isParty(data.party),
+      question: data.is_ballot_measure,
+      voteType: undefined,
+      reporting: null,
+      totalPrecincts: data.precinctstotal,
+      subContest: false,
+      election_id: options.election.get('id')
+    }
+  };
+}
+
+// US Senate
+function parseUSSenate(data, options = {}) {
+  let bodyId = 'usa-congress-senate';
+  let officeId = `${bodyId}-mn-${makeId(data.description)}`;
+  let contestId = `${moment(options.election.get('date')).format(
+    'YYYYMMDD'
+  )}-${officeId}`;
+  let title = `Minnesota Senate ${data.description}`;
+  let shortTitle = data.description;
+
+  // Determine if special election
+  // https://en.wikipedia.org/wiki/Classes_of_United_States_Senators
+  let electionYear = moment(options.election.date).year();
+  let special = false;
+  if (
+    data.description.match(/class\s+i$/i) &&
+    Math.abs(electionYear - 2018) % 6 !== 0
+  ) {
+    special = true;
+  }
+  else if (
+    data.description.match(/class\s+ii$/i) &&
+    Math.abs(electionYear - 2020) % 6 !== 0
+  ) {
+    special = true;
+  }
+  else if (
+    data.description.match(/class\s+iii$/i) &&
+    Math.abs(electionYear - 2022) % 6 !== 0
+  ) {
+    special = true;
+  }
+
+  return {
+    body: {
+      id: bodyId,
+      name: bodyId,
+      title: 'United States Senate',
+      shortTitle: 'U.S. Senate',
+      sort: makeSort('United States Senate')
+    },
+
+    office: {
+      id: officeId,
+      name: officeId,
+      title,
+      shortTitle,
+      sort: makeSort(title),
+      area: 'Minnesota',
+      subArea: undefined,
+      seatName: data.description,
+      boundary_id: 'usa-state-mn',
+      body_id: bodyId
+    },
+
+    contest: {
+      id: contestId,
+      name: contestId,
+      title,
+      shortTitle,
+      sort: makeSort(title),
+      description: undefined,
+      localId: makeId(data.description),
+      apId: data.raceid,
+      type: parseContestType(data.racetypeid),
+      special: special,
+      elect: undefined,
+      uncontested: data.uncontested,
+      partisan: isParty(data.party),
+      question: data.is_ballot_measure,
+      voteType: undefined,
+      reporting: null,
+      totalPrecincts: data.precinctstotal,
+      subContest: false,
+      election_id: options.election.get('id')
+    }
+  };
+}
+
+// State Senate
+function parseStateSenate(data, options = {}) {
+  let bodyId = 'usa-mn-state-upper';
+  let officeId = `${bodyId}-27${data.seatnum.padStart(2, '0')}`;
+  let contestId = `${moment(options.election.get('date')).format(
+    'YYYYMMDD'
+  )}-${officeId}`;
+  let title = `Minnesota State Senate District ${data.seatnum}`;
+  let shortTitle = `District ${data.seatnum}`;
+
+  return {
+    body: {
+      id: bodyId,
+      name: bodyId,
+      title: 'Minnesota State Senate',
+      shortTitle: 'MN Senate',
+      sort: makeSort('Minnesota State Senate')
+    },
+
+    office: {
+      id: officeId,
+      name: officeId,
+      title,
+      shortTitle,
+      sort: makeSort(title),
+      area: 'Minnesota',
+      subArea: `District ${data.seatnum}`,
+      seatName: undefined,
+      boundary_id: `usa-mn-state-upper-27${data.seatnum.padStart(2, '0')}`,
+      body_id: bodyId
+    },
+
+    contest: {
+      id: contestId,
+      name: contestId,
+      title,
+      shortTitle,
+      sort: makeSort(title),
+      description: undefined,
+      localId: makeId(data.description),
+      apId: data.raceid,
+      type: parseContestType(data.racetypeid),
+      special: undefined,
+      elect: undefined,
+      uncontested: data.uncontested,
+      partisan: isParty(data.party),
+      question: data.is_ballot_measure,
+      voteType: undefined,
+      reporting: null,
+      totalPrecincts: data.precinctstotal,
+      subContest: false,
+      election_id: options.election.get('id')
+    }
+  };
+}
+
+// State House
+function parseStateHouse(data, options = {}) {
+  // Get district from seat name
+  let district = data.seatname.match(/district\s+([0-9]+[a-z]+)/i)[1];
+
+  let bodyId = 'usa-mn-state-lower';
+  let officeId = `${bodyId}-27${district.toLowerCase().padStart(3, '0')}`;
+  let contestId = `${moment(options.election.get('date')).format(
+    'YYYYMMDD'
+  )}-${officeId}`;
+  let title = `Minnesota State House District ${district}`;
+  let shortTitle = `District ${district}`;
+
+  return {
+    body: {
+      id: bodyId,
+      name: bodyId,
+      title: 'Minnesota State House of Representatives',
+      shortTitle: 'MN House',
+      sort: makeSort('Minnesota State House of Representatives')
+    },
+
+    office: {
+      id: officeId,
+      name: officeId,
+      title,
+      shortTitle,
+      sort: makeSort(title),
+      area: 'Minnesota',
+      subArea: `District ${district}`,
+      seatName: undefined,
+      boundary_id: `usa-mn-state-lower-27${district
+        .toLowerCase()
+        .padStart(3, '0')}`,
+      body_id: bodyId
+    },
+
+    contest: {
+      id: contestId,
+      name: contestId,
+      title,
+      shortTitle,
+      sort: makeSort(title),
+      description: undefined,
+      localId: makeId(data.description),
+      apId: data.raceid,
+      type: parseContestType(data.racetypeid),
+      special: undefined,
       elect: undefined,
       uncontested: data.uncontested,
       partisan: isParty(data.party),
