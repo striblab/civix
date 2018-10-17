@@ -83,12 +83,7 @@ function parseStateLevelExecutive(data, options = {}) {
       totalPrecincts: data.precinctstotal,
       subContest: false,
       election_id: options.election.get('id'),
-      sourceData: {
-        'ap-elex': {
-          about: 'Taken from results level data',
-          data
-        }
-      }
+      office_id: officeId
     }
   };
 }
@@ -152,7 +147,8 @@ function parseStateSupremeAppealsCourt(data, options = {}) {
       reporting: null,
       totalPrecincts: data.precinctstotal,
       subContest: false,
-      election_id: options.election.get('id')
+      election_id: options.election.get('id'),
+      office_id: officeId
     }
   };
 }
@@ -217,7 +213,8 @@ function parseStateDistrictCourt(data, options = {}) {
       reporting: null,
       totalPrecincts: data.precinctstotal,
       subContest: false,
-      election_id: options.election.get('id')
+      election_id: options.election.get('id'),
+      office_id: officeId
     }
   };
 }
@@ -276,7 +273,8 @@ function parseUSHouse(data, options = {}) {
       reporting: null,
       totalPrecincts: data.precinctstotal,
       subContest: false,
-      election_id: options.election.get('id')
+      election_id: options.election.get('id'),
+      office_id: officeId
     }
   };
 }
@@ -355,7 +353,8 @@ function parseUSSenate(data, options = {}) {
       reporting: null,
       totalPrecincts: data.precinctstotal,
       subContest: false,
-      election_id: options.election.get('id')
+      election_id: options.election.get('id'),
+      office_id: officeId
     }
   };
 }
@@ -411,7 +410,8 @@ function parseStateSenate(data, options = {}) {
       reporting: null,
       totalPrecincts: data.precinctstotal,
       subContest: false,
-      election_id: options.election.get('id')
+      election_id: options.election.get('id'),
+      office_id: officeId
     }
   };
 }
@@ -472,7 +472,8 @@ function parseStateHouse(data, options = {}) {
       reporting: null,
       totalPrecincts: data.precinctstotal,
       subContest: false,
-      election_id: options.election.get('id')
+      election_id: options.election.get('id'),
+      office_id: officeId
     }
   };
 }

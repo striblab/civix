@@ -27,7 +27,7 @@ module.exports = db => {
   model.associate = function() {
     this.__associations = [];
 
-    // Parent to a jurisdiction
+    // Parent another division
     this.__associations.push(this.belongsTo(this, { as: 'parent' }));
   };
 

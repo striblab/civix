@@ -138,9 +138,13 @@ module.exports = db => {
     Office,
     Party,
     BoundaryVersion,
-    Division
+    Division,
+    Result
   }) {
     this.__associations = [];
+
+    // Make an association back to results
+    this.__associations.push(this.hasMany(Result));
 
     // A contest is tied to an election
     this.__associations.push(
@@ -165,13 +169,11 @@ module.exports = db => {
       })
     );
 
-    // A results can be a subresult of of other and tied to a specific
+    // A contest can be a subcontest of another and tied to a specific
     // boundary and division
+    this.__associations.push(this.belongsTo(this, { as: 'parent' }));
     this.__associations.push(this.belongsTo(BoundaryVersion));
     this.__associations.push(this.belongsTo(Division));
-
-    // A contest can be a subcontest
-    this.__associations.push(this.belongsTo(this, { as: 'parent' }));
   };
 
   return model;

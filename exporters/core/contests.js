@@ -6,44 +6,67 @@
 const _ = require('lodash');
 const fs = require('fs-extra');
 const path = require('path');
+const moment = require('moment-timezone');
+moment.tz.setDefault('America/New_York');
 
 // Export function
 module.exports = async ({ logger, config, models, db, argv }) => {
+  // Get election
+  if (!argv.election) {
+    throw new Error(
+      'Make sure to include the --election option, for instance: --election=2018-11-05'
+    );
+  }
+
+  // Make sure there is actually an election there
+  let electionRecord = await models.Election.findOne({
+    where: { date: new Date(argv.election) }
+  });
+  if (!electionRecord) {
+    throw new Error(
+      `Unable to find any election records for: ${argv.election}`
+    );
+  }
+
+  // Create base path
+  let electionContestsPath = path.join(
+    argv.output,
+    moment(electionRecord.get('date')).format('YYYY-MM-DD'),
+    'contests'
+  );
+  try {
+    fs.mkdirpSync(electionContestsPath);
+  }
+  catch (e) {
+    logger('error', `Unable to create path: ${electionContestsPath}`);
+    throw e;
+  }
+  console.log(electionContestsPath);
+
   // Make query
   let contests = await models.Contest.findAll({
     where: {
-      election_id: 'mn-20180814'
+      '$election.date$': electionRecord.get('date')
     },
     order: [
       ['sort', 'ASC'],
       ['title', 'ASC'],
-      [{ model: models.Result, as: 'results' }, 'winner', 'DESC'],
-      [{ model: models.Result, as: 'results' }, 'percent', 'DESC'],
+      //[{ model: models.Result, as: 'results' }, 'winner', 'DESC'],
+      [{ model: models.Result }, 'winner', 'DESC'],
+      [{ model: models.Result }, 'percent', 'DESC'],
       [{ model: models.Party }, 'sort', 'ASC'],
-      [
-        { model: models.Result, as: 'results' },
-        { model: models.Candidate },
-        'sort',
-        'ASC'
-      ],
-      [{ model: models.Result, as: 'subResults' }, 'percent', 'DESC'],
-      [
-        { model: models.Result, as: 'subResults' },
-        { model: models.Candidate },
-        'sort',
-        'ASC'
-      ]
+      [{ model: models.Result }, { model: models.Candidate }, 'sort', 'ASC']
     ],
     include: [
+      // Default all does not get nested parts
       {
         all: true,
         attributes: { exclude: ['sourceData'] }
       },
+      // Results
       {
         model: models.Result,
         attributes: { exclude: ['sourceData'] },
-        // Just top results
-        where: { subResult: false },
         include: [
           {
             model: models.Candidate,
@@ -57,20 +80,7 @@ module.exports = async ({ logger, config, models, db, argv }) => {
           }
         ]
       },
-      {
-        model: models.Result,
-        attributes: { exclude: ['sourceData'] },
-        // Sub results
-        where: { subResult: true },
-        as: 'subResults',
-        required: false,
-        include: [
-          {
-            model: models.Candidate,
-            attributes: { exclude: ['sourceData'] }
-          }
-        ]
-      },
+      // Office
       {
         model: models.Office,
         attributes: { exclude: ['sourceData'] },
@@ -83,20 +93,6 @@ module.exports = async ({ logger, config, models, db, argv }) => {
       }
     ]
   });
-
-  // Get election
-  let election = await contests[0].getElection();
-
-  // Get divisions
-  let divisions = _.keyBy(
-    _.map(
-      await models.Division.findAll({
-        attributes: { exclude: ['sourceData'] }
-      }),
-      d => d.get({ plain: true })
-    ),
-    'id'
-  );
 
   // Turn to json
   let simpleContests = _.map(contests, c => {
@@ -112,16 +108,6 @@ module.exports = async ({ logger, config, models, db, argv }) => {
 
   // Just top level results
   let topResults = _.map(simpleContests, c => _.omit(c, 'subResults'));
-
-  // Create base path
-  let electionContestsPath = path.join(argv.output, election.id, 'contests');
-  try {
-    fs.mkdirpSync(electionContestsPath);
-  }
-  catch (e) {
-    logger('error', `Unable to create path: ${electionContestsPath}`);
-    throw e;
-  }
 
   // Output all
   let allPath = path.join(electionContestsPath, 'all.json');
@@ -153,69 +139,57 @@ module.exports = async ({ logger, config, models, db, argv }) => {
   // By body (and then office)
   let byBodyPath = path.join(electionContestsPath, 'by-body');
   fs.mkdirpSync(byBodyPath);
-  _.each(_.groupBy(topResults, c => c.office.body_id), (g, gi) => {
-    let body =
-      gi && gi !== 'null'
-        ? _.cloneDeep(g[0].office.body)
-        : { id: 'no-body', noBody: true };
-    if (!body) {
-      return;
-    }
-
-    body.offices = _.mapValues(_.groupBy(g, o => o.office_id), o => {
-      let office = _.cloneDeep(o[0].office);
-      office.contests = o;
-      return office;
-    });
-
-    // All offices in body
-    fs.writeFileSync(
-      path.join(byBodyPath, `${body.id}.json`),
-      JSON.stringify(body)
-    );
-
-    // Break up into contested and uncontested.  For an office with a
-    // partisan primary, both contests must be uncontested
-    let contested = _.cloneDeep(body);
-    contested.offices = filterValues(contested.offices, o => {
-      let uncontested = true;
-      o.contests.forEach(c => {
-        uncontested = c.uncontested === false ? false : uncontested;
-      });
-      return !uncontested;
-    });
-    fs.writeFileSync(
-      path.join(byBodyPath, `${body.id}.contested.json`),
-      JSON.stringify(contested)
-    );
-
-    let uncontested = _.cloneDeep(body);
-    uncontested.offices = filterValues(uncontested.offices, o => {
-      let uncontested = true;
-      o.contests.forEach(c => {
-        uncontested = c.uncontested === false ? false : uncontested;
-      });
-      return uncontested;
-    });
-    fs.writeFileSync(
-      path.join(byBodyPath, `${body.id}.uncontested.json`),
-      JSON.stringify(uncontested)
-    );
-  });
-
-  // (Loosely) by boundary
-  let byBoundaryPath = path.join(electionContestsPath, 'by-boundary');
-  fs.mkdirpSync(byBoundaryPath);
   _.each(
-    _.groupBy(topResults, c =>
-      c.office.boundary_id
-        .replace(/(-[0-9]+|-[a-z])(-|$)/gi, '$2')
-        .replace(/(-[0-9]+|-[a-z])(-|$)/gi, '$2')
-    ),
+    _.groupBy(topResults, c => {
+      return c.office.body_id;
+    }),
     (g, gi) => {
+      let body =
+        gi && gi !== 'null'
+          ? _.cloneDeep(g[0].office.body)
+          : { id: 'no-body', noBody: true };
+      if (!body) {
+        return;
+      }
+
+      body.offices = _.mapValues(_.groupBy(g, o => o.office_id), o => {
+        let office = _.cloneDeep(o[0].office);
+        office.contests = o;
+        return office;
+      });
+
+      // All offices in body
       fs.writeFileSync(
-        path.join(byBoundaryPath, `${gi}.json`),
-        JSON.stringify(g)
+        path.join(byBodyPath, `${body.id}.json`),
+        JSON.stringify(body)
+      );
+
+      // Break up into contested and uncontested.  For an office with a
+      // partisan primary, both contests must be uncontested
+      let contested = _.cloneDeep(body);
+      contested.offices = filterValues(contested.offices, o => {
+        let uncontested = true;
+        o.contests.forEach(c => {
+          uncontested = c.uncontested === false ? false : uncontested;
+        });
+        return !uncontested;
+      });
+      fs.writeFileSync(
+        path.join(byBodyPath, `${body.id}.contested.json`),
+        JSON.stringify(contested)
+      );
+
+      let uncontested = _.cloneDeep(body);
+      uncontested.offices = filterValues(uncontested.offices, o => {
+        let uncontested = true;
+        o.contests.forEach(c => {
+          uncontested = c.uncontested === false ? false : uncontested;
+        });
+        return uncontested;
+      });
+      fs.writeFileSync(
+        path.join(byBodyPath, `${body.id}.uncontested.json`),
+        JSON.stringify(uncontested)
       );
     }
   );
