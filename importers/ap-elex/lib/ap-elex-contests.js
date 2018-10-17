@@ -1,5 +1,5 @@
 /**
- * Parsing contests from AP (via Elex) data
+ * Parsing contests from AP (via Elex) results-level data
  */
 
 // Dependencies
@@ -8,12 +8,6 @@ const { makeSort, makeId } = require('../../../lib/strings.js');
 
 // Main parsed
 function parseRouter(data, options = {}) {
-  console.log(
-    `${data.racetypeid} || ${data.officeid} || ${data.officename} || ${
-      data.seatnum
-    } || ${data.seatname}`
-  );
-
   // Big check
   if (
     data.officename.match(
@@ -88,7 +82,13 @@ function parseStateLevelExecutive(data, options = {}) {
       reporting: null,
       totalPrecincts: data.precinctstotal,
       subContest: false,
-      election_id: options.election.get('id')
+      election_id: options.election.get('id'),
+      sourceData: {
+        'ap-elex': {
+          about: 'Taken from results level data',
+          data
+        }
+      }
     }
   };
 }

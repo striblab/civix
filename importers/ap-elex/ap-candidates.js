@@ -5,40 +5,36 @@
 // Dependencies
 const _ = require('lodash');
 const Elex = require('../../lib/elex.js').Elex;
-const ensureElexSource = require('./source-ap-elex.js');
+const { makeSort, makeId } = require('../../lib/strings.js');
+const contestParser = require('./lib/ap-elex-contests.js');
 
 // Import function
 module.exports = async function coreDataElexRacesImporter({
   logger,
   models,
-  db
+  db,
+  argv
 }) {
   logger('info', 'AP (via Elex) Candidates importer...');
-  let updates = [];
 
-  // Election information
-  const electionString = '2018-08-14';
-  const electionDate = new Date(electionString);
-  const electionDateId = electionString.replace(/-/g, '');
-  const electionRecord = {
-    id: `mn-${electionDateId}`,
-    name: `mn-${electionDateId}`,
-    title: `Minnesota Primary ${electionString}`,
-    shortTitle: 'MN Primary',
-    sort: `${electionDateId} minnesota primary`,
-    date: electionDate,
-    type: 'primary',
-    boundary_id: 'state-mn',
-    sourceData: {
-      'civix-ap-elex': {
-        manual: true
-      }
-    }
-  };
+  // Make sure election is given
+  if (!argv.election) {
+    throw new Error(
+      'An election argument must be provided, for example "--election="2018-11-06"'
+    );
+  }
 
-  // Get elex candidates (via results)
-  const elex = new Elex({ logger, defaultElection: electionString });
-  const candidates = await elex.results();
+  // Make sure state is given
+  if (!argv.state) {
+    throw new Error(
+      'An state argument must be provided, for example "--state="mn'
+    );
+  }
+
+  // Get elex races.  We use the results to set things up, since
+  // it has more details and sub-contests
+  const elex = new Elex({ logger, defaultElection: argv.election });
+  const results = await elex.results();
 
   // Create transaction
   const transaction = await db.sequelize.transaction();
@@ -46,37 +42,42 @@ module.exports = async function coreDataElexRacesImporter({
   // Wrap to catch any issues and rollback
   try {
     // Gather results
-    let results = [];
+    let importResults = [];
 
-    // Make common source
-    let sourceResult = await ensureElexSource({ models, transaction });
-    results.push(sourceResult);
-    let source = sourceResult[0];
-
-    // Create election
-    let electionResult = await db.findOrCreateOne(models.Election, {
-      where: { id: electionRecord.id },
-      defaults: electionRecord,
-      transaction
+    // Get election
+    let election = await models.Election.findOne({
+      where: {
+        id: `usa-${argv.state}-${argv.election.replace(/-/g, '')}`
+      }
     });
-    results.push(electionResult);
-    let election = electionResult[0];
+    if (!election) {
+      throw new Error(
+        `Unable to find election: ${argv.state}-${argv.election}`
+      );
+    }
+
+    // Filter candidates to just the top level
+    let candidates = _.filter(results, r => {
+      return (
+        r.statepostal === argv.state.toUpperCase() &&
+        r.reportingunitid.match(/^state/i)
+      );
+    });
 
     // Import candidates
-    results = results.concat(
+    importResults = importResults.concat(
       await importCandidates({
         candidates,
         db,
         transaction,
         models,
-        source,
         election
       })
     );
 
     // Log changes
     _.filter(
-      results.forEach(u => {
+      importResults.forEach(u => {
         logger(
           'info',
           `[${u[0].constructor.name}] ${u[1] ? 'Created' : 'Existed'}: ${
@@ -104,7 +105,6 @@ async function importCandidates({
   db,
   transaction,
   models,
-  source,
   election
 }) {
   let results = [];
@@ -116,8 +116,7 @@ async function importCandidates({
         candidate,
         db,
         models,
-        transaction,
-        source
+        transaction
       })
     );
   }
@@ -131,24 +130,23 @@ async function importCandidate({
   candidate,
   db,
   models,
-  transaction,
-  source
+  transaction
 }) {
-  let original = _.cloneDeep(candidate);
-
-  // Unsure best way to only find top level results, but
-  // this seems to work
-  if (candidate.level !== 'state' && candidate.level !== null) {
-    return [];
-  }
-
-  // Get party
+  // Parse out some of the high level data and Ids
+  let parsedContest = contestParser(candidate, { election });
 
   // Get party.  AP doesn't use DFL, though it should
   let party;
   if (candidate.party.toLowerCase() === 'dem') {
     party = await models.Party.findOne({
       where: { id: 'dfl' },
+      transaction
+    });
+  }
+  // No party
+  else if (candidate.party.toLowerCase() === 'np') {
+    party = await models.Party.findOne({
+      where: { id: 'np' },
       transaction
     });
   }
@@ -161,43 +159,34 @@ async function importCandidate({
 
   // Assume unknown party is non-partisan
   if (!party) {
-    party = await models.Party.findOne({
-      where: { id: 'np' },
-      transaction
-    });
+    throw new Error(`Unable to find party: ${candidate.party}`);
   }
+
+  // Some common values
+  let id = `${parsedContest.contest.id}-${candidate.candidateid}`;
 
   // Create candidate record
   let candidateRecord = {
-    id: db.makeIdentifier([
-      election.get('id'),
-      candidate.candidateid,
-      candidate.last
-    ]),
-    name: db.makeIdentifier([
-      election.get('id'),
-      candidate.candidateid,
-      candidate.last
-    ]),
+    id,
+    name: id,
     party_id: party.get('id'),
     apId: candidate.candidateid,
     apIdHistory: { [election.get('id')]: candidate.candidateid },
     first: candidate.first,
     last: candidate.last,
-    fullName: _
-      .filter([candidate.first, candidate.last])
+    fullName: _.filter([candidate.first, candidate.last])
       .join(' ')
       .trim(),
     // TODO
     shortName: undefined,
-    sort: _
-      .filter([candidate.last, candidate.first])
+    sort: _.filter([candidate.last, candidate.first])
       .join(', ')
       .trim()
       .toLowerCase(),
     sourceData: {
-      [source.get('id')]: {
-        data: original
+      'ap-elex': {
+        about: 'Taken from results level data',
+        data: candidate
       }
     }
   };

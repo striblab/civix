@@ -6,7 +6,8 @@
 const _ = require('lodash');
 const Sequelize = require('sequelize');
 const Elex = require('../../lib/elex.js').Elex;
-const ensureElexSource = require('./source-ap-elex.js');
+const { makeSort, makeId } = require('../../lib/strings.js');
+const contestParser = require('./lib/ap-elex-contests.js');
 const debug = require('debug')('civix:importer:ap-results');
 
 // Import function
@@ -14,33 +15,29 @@ module.exports = async function coreDataElexRacesImporter({
   logger,
   models,
   db,
-  config
+  config,
+  argv
 }) {
   logger('info', 'AP (via Elex) Results importer...');
 
-  // Election information
-  const electionString = '2018-08-14';
-  const electionDate = new Date(electionString);
-  const electionDateId = electionString.replace(/-/g, '');
-  const electionRecord = {
-    id: `mn-${electionDateId}`,
-    name: `mn-${electionDateId}`,
-    title: `Minnesota Primary ${electionString}`,
-    shortTitle: 'MN Primary',
-    sort: `${electionDateId} minnesota primary`,
-    date: electionDate,
-    type: 'primary',
-    boundary_id: 'state-mn',
-    sourceData: {
-      'civix-ap-elex': {
-        manual: true
-      }
-    }
-  };
+  // Make sure election is given
+  if (!argv.election) {
+    throw new Error(
+      'An election argument must be provided, for example "--election="2018-11-06"'
+    );
+  }
 
-  // Get elex candidates (via results)
-  const elex = new Elex({ logger, defaultElection: electionString });
-  const electionResults = await elex.results();
+  // Make sure state is given
+  if (!argv.state) {
+    throw new Error(
+      'An state argument must be provided, for example "--state="mn'
+    );
+  }
+
+  // Get elex races.  We use the results to set things up, since
+  // it has more details and sub-contests
+  const elex = new Elex({ logger, defaultElection: argv.election });
+  let results = await elex.results();
 
   // Create transaction
   const transaction = await db.sequelize.transaction();
@@ -48,37 +45,42 @@ module.exports = async function coreDataElexRacesImporter({
   // Wrap to catch any issues and rollback
   try {
     // Gather results
-    let results = [];
+    let dbResults = [];
 
-    // Make common source
-    let sourceResult = await ensureElexSource({ models, transaction });
-    results.push(sourceResult);
-    let source = sourceResult[0];
-
-    // Create election
-    let electionRecordResults = await db.findOrCreateOne(models.Election, {
-      where: { id: electionRecord.id },
-      defaults: electionRecord,
-      transaction
+    // Get election
+    let election = await models.Election.findOne({
+      where: {
+        id: `usa-${argv.state}-${argv.election.replace(/-/g, '')}`
+      }
     });
-    results.push(electionRecordResults);
-    let election = electionRecordResults[0];
+    if (!election) {
+      throw new Error(
+        `Unable to find election: ${argv.state}-${argv.election}`
+      );
+    }
+
+    // Filter candidates to just the top level
+    results = _.filter(results, r => {
+      return (
+        r.statepostal === argv.state.toUpperCase() &&
+        r.reportingunitid.match(/^state/i)
+      );
+    });
 
     // Import results
-    results = results.concat(
+    dbResults = dbResults.concat(
       await importResults({
-        electionResults,
+        results,
         db,
         transaction,
         models,
-        source,
         election,
         config
       })
     );
 
     // Log changes
-    _.filter(results).forEach(u => {
+    _.filter(dbResults).forEach(u => {
       if (!u || !u[0]) {
         return;
       }
@@ -105,80 +107,30 @@ module.exports = async function coreDataElexRacesImporter({
 
 // Import candidates
 async function importResults({
-  electionResults,
+  results,
   db,
   transaction,
   models,
-  source,
   election,
   config
 }) {
-  let results = [];
-
-  // Reset all existing results
-  await models.Result.update(
-    {
-      test: false,
-      winner: false,
-      votes: 0,
-      percent: 0,
-      apUpdated: null,
-      sourceData: {},
-      resultDetails: {}
-    },
-    {
-      where: { apId: { [Sequelize.Op.not]: null } },
-      transaction
-    }
-  );
-  await models.Contest.update(
-    {
-      totalPrecincts: null,
-      reporting: 0,
-      sourceData: {}
-    },
-    {
-      where: { apId: { [Sequelize.Op.not]: null } },
-      transaction
-    }
-  );
+  let importResults = [];
 
   // Do top-level results first
-  for (let result of electionResults) {
-    if (result.level === 'state' || result.level === null) {
-      results = results.concat(
-        await importResult({
-          election,
-          result,
-          db,
-          models,
-          transaction,
-          source,
-          config
-        })
-      );
-    }
+  for (let result of results) {
+    importResults = importResults.concat(
+      await importResult({
+        election,
+        result,
+        db,
+        models,
+        transaction,
+        config
+      })
+    );
   }
 
-  // Then do county
-  for (let result of electionResults) {
-    if (result.level === 'county') {
-      results = results.concat(
-        await importResult({
-          election,
-          result,
-          db,
-          models,
-          transaction,
-          source,
-          isCounty: true,
-          config
-        })
-      );
-    }
-  }
-
-  return results;
+  return importResults;
 }
 
 // Import single candidate
@@ -188,67 +140,40 @@ async function importResult({
   db,
   models,
   transaction,
-  source,
-  isCounty,
   config
 }) {
-  let original = _.cloneDeep(result);
-  let results = [];
+  let importResults = [];
 
-  // Get candidate record
-  let candidate = await models.Candidate.findOne({
-    where: { apId: result.candidateid },
-    transaction,
-    include: []
-  });
-  if (!candidate) {
-    debug(result);
-    throw new Error(`Unable to find candidate: ${result.candidateid}`);
-  }
+  // Parse out some of the high level data and Ids
+  let parsedContest = contestParser(result, { election });
 
-  // Get contest record
-  let contest = await models.Contest.findOne({
-    where: { apId: result.raceid, election_id: election.get('id') },
-    transaction,
-    include: []
-  });
-  // There are some candidate results that are not in the results
-  // set, but it seems to only be uncontested.
-  if (!contest && !result.uncontested) {
-    debug(result);
-    throw new Error(`Unable to find contest: ${result.candidateid}`);
-  }
-  if (!contest) {
-    return [];
-  }
+  // Candidate id
+  let candidateId = `${parsedContest.contest.id}-${result.candidateid}`;
+
+  // Don't get candidate or contest record for speed
 
   // Make default id
-  let resultId = db.makeIdentifier([
-    contest.get('id'),
-    result.candidateid,
-    result.last
-  ]);
-  let boundaryVersionId;
+  let resultId = candidateId;
 
   // If county, make parent id
-  if (isCounty) {
-    resultId = db.makeIdentifier([resultId, result.fipscode]);
+  // if (isCounty) {
+  //   resultId = db.makeIdentifier([resultId, result.fipscode]);
 
-    let boundaryVersion = await models.BoundaryVersion.findOne({
-      where: { fips: result.fipscode.replace(/^27/, '') },
-      transaction,
-      include: []
-    });
-    if (boundaryVersion) {
-      boundaryVersionId = boundaryVersion.get('id');
-    }
-  }
+  //   let boundaryVersion = await models.BoundaryVersion.findOne({
+  //     where: { fips: result.fipscode.replace(/^27/, '') },
+  //     transaction,
+  //     include: []
+  //   });
+  //   if (boundaryVersion) {
+  //     boundaryVersionId = boundaryVersion.get('id');
+  //   }
+  // }
 
   // Create result record
   let resultRecord = {
     id: resultId,
-    contest_id: contest.get('id'),
-    candidate_id: candidate.get('id'),
+    contest_id: parsedContest.contest.id,
+    candidate_id: candidateId,
     apId: result.id,
     apUpdated: result.lastupdated ? new Date(result.lastupdated) : undefined,
     units: undefined,
@@ -257,22 +182,26 @@ async function importResult({
     winner: result.winner,
     incumbent: result.incumbent,
     test: config.testResults,
-    subResult: isCounty ? true : false,
-    resultDetails: isCounty
-      ? {
-        reporting: result.precinctsreporting,
-        totalPrecincts: result.precinctstotal
-      }
-      : undefined,
-    boundary_version_id: boundaryVersionId ? boundaryVersionId : undefined,
-    division_id: isCounty ? result.level : undefined,
+
+    //subResult: isCounty ? true : false,
+    // resultDetails: isCounty
+    //   ? {
+    //     reporting: result.precinctsreporting,
+    //     totalPrecincts: result.precinctstotal
+    //   }
+    //   : undefined,
+    //boundary_version_id: boundaryVersionId ? boundaryVersionId : undefined,
+    //division_id: isCounty ? result.level : undefined,
+
     sourceData: {
-      [source.get('id')]: {
-        data: original
+      'ap-elex': {
+        data: result
       }
     }
   };
-  results.push(
+
+  // TODO: Support update only option
+  importResults.push(
     await db.updateOrCreateOne(models.Result, {
       where: { id: resultRecord.id },
       defaults: resultRecord,
@@ -291,26 +220,17 @@ async function importResult({
   );
 
   // Update contest
-  if (!isCounty) {
-    results.push([
-      await contest.update(
-        {
-          reporting: result.precinctsreporting,
-          totalPrecincts: result.precinctstotal,
-          sourceData: {
-            [source.get('id')]: {
-              data: original
-            }
-          }
-        },
-        {
-          transaction,
-          include: []
-        }
-      ),
-      false
-    ]);
-  }
+  //if (!isCounty) {
+  await models.Contest.update(
+    {
+      reporting: result.precinctsreporting,
+      totalPrecincts: result.precinctstotal
+    },
+    {
+      where: { id: parsedContest.contest.id },
+      transaction
+    }
+  );
 
-  return results;
+  return importResults;
 }
