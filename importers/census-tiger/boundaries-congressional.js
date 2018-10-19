@@ -6,12 +6,9 @@
  */
 
 // Dependencies
-const _ = require('lodash');
-const path = require('path');
 const moment = require('moment');
-const { shapes } = require('../../lib/shapefile.js');
 const { makeSort } = require('../../lib/strings.js');
-const { download } = require('../../lib/download.js');
+const { importRecords, processGeo } = require('../../lib/importing.js');
 
 // Import function
 module.exports = async function tigerStatesImporter({
@@ -20,8 +17,6 @@ module.exports = async function tigerStatesImporter({
   db,
   argv
 }) {
-  let results = [];
-
   // Look for year from argv
   if (!argv.congress) {
     throw new Error(
@@ -30,184 +25,121 @@ module.exports = async function tigerStatesImporter({
   }
 
   // Find congress
-  let congress = congresses()[argv.congress];
-  if (!congress) {
+  let congressSet = congresses()[argv.congress];
+  if (!congressSet) {
     throw new Error(
       `Unable to find information about Congress ${argv.congress}`
     );
   }
+  congressSet.congress = argv.congress;
 
-  congress.congress = argv.congress;
+  // Log
   logger('info', `Census TIGER: Congressional districts ${argv.congress} ...`);
 
-  // Start transaction
-  const transaction = await db.sequelize.transaction();
-  try {
-    // Go through congress years
-    for (let y of congress) {
-      y.congress = argv.congress;
+  // Collect records to save
+  let records = [];
 
-      results = results.concat(
-        await importCongressSet({
-          congress: y,
-          db,
-          transaction,
-          models,
-          logger
-        })
-      );
-    }
-
-    // Log changes
-    _.filter(results).forEach(u => {
-      if (!u || !u[0]) {
-        return;
-      }
-
-      logger(
-        'info',
-        `[${u[0].constructor.name}] ${u[1] ? 'Created' : 'Existed'}: ${
-          u[0].dataValues.id
-        }`
-      );
+  // Go through congress years
+  for (let congress of congressSet) {
+    // Download
+    let districts = await processGeo({
+      url: congress.url,
+      shapePath: congress.shapefile,
+      inputProjection: 'EPSG:4269',
+      logger
     });
 
-    // Commit
-    transaction.commit();
-    logger('info', 'Transaction committed.');
-  }
-  catch (error) {
-    transaction.rollback();
-    logger('error', 'Transaction rolled back; no data changes were made.');
-    logger('error', error.stack ? error.stack : error);
-  }
-};
+    // Go through districts
+    for (let district of districts.features) {
+      let p = district.properties;
+      let parsed = congress.parser(p, congress);
+      let boundaryId = `usa-congressional-district-${parsed.geoid}`;
+      let boundaryVersionId = `${
+        congressSet.congress
+      }-${congress.start.year()}-${boundaryId}`;
 
-// Import a year of congress
-async function importCongressSet({
-  congress,
-  db,
-  transaction,
-  models,
-  logger
-}) {
-  let results = [];
-  logger(
-    'info',
-    'Downloading shapefile, can take a moment if not already cached ...'
-  );
+      // Get state
+      let stateVersion = await models.BoundaryVersion.findOne({
+        where: { fips: parsed.state }
+      });
+      let state = await models.Boundary.findOne({
+        where: { id: stateVersion.get('boundary_id') }
+      });
+      if (!state) {
+        throw new Error(
+          `Unable to find state with GEOID code: ${parsed.geoid}`
+        );
+      }
 
-  // Get file
-  let dl = await download({
-    ttl: 1000 * 60 * 60 * 24 * 30,
-    url: congress.url,
-    output: congress.shapefile
-  });
+      // Make title from state
+      let title = `${state.get(
+        'title'
+      )} Congressional District ${parsed.localId.replace(/^0+/, '')}`;
 
-  // Read in the shapefile and reproject
-  let districts = await shapes(path.join(dl.output, congress.shapefile), {
-    originalProjection: 'EPSG:4269'
-  });
+      // Create general boundary if needed
+      let boundary = {
+        model: models.Boundary,
+        record: {
+          id: boundaryId,
+          name: boundaryId,
+          title: title,
+          shortTitle: `District ${parsed.localId.replace(/^0+/, '')}`,
+          sort: makeSort(title),
+          localId: parsed.localId,
+          division_id: 'congress',
+          sourceData: {
+            'census-tiger-congress': {
+              about: 'See specific version for original data.',
+              url: 'https://www.census.gov/geo/maps-data/data/cbf/cbf_cds.html'
+            }
+          }
+        },
+        post: async (r, { transaction }) => {
+          await r[0].addParents([state.get('id')], { transaction });
+          return r;
+        }
+      };
+      records.push(boundary);
 
-  // Go through districts
-  for (let district of districts) {
-    results = results.concat(
-      await importDistrict({
-        congress,
-        district,
-        db,
-        models,
-        transaction
-      })
-    );
-  }
-
-  return results;
-}
-
-// Import a district
-async function importDistrict({ congress, district, db, transaction, models }) {
-  let p = district.properties;
-  let parsed = congress.parser(p, congress);
-  let boundaryId = `usa-congressional-district-${parsed.geoid}`;
-  let boundaryVersionId = `${
-    congress.congress
-  }-${congress.start.year()}-${boundaryId}`;
-
-  // Get state
-  let stateVersion = await models.BoundaryVersion.findOne({
-    where: { fips: parsed.state }
-  });
-  let state = await models.Boundary.findOne({
-    where: { id: stateVersion.get('boundary_id') }
-  });
-  if (!state) {
-    throw new Error(`Unable to find state with GEOID code: ${parsed.geoid}`);
-  }
-
-  // Make title from state
-  let title = `${state.get(
-    'title'
-  )} Congressional District ${parsed.localId.replace(/^0+/, '')}`;
-
-  // Create general boundary if needed
-  let boundary = await db
-    .findOrCreateOne(models.Boundary, {
-      transaction,
-      where: { id: boundaryId },
-      include: models.Boundary.__associations,
-      defaults: {
-        id: boundaryId,
-        name: boundaryId,
-        title: title,
-        shortTitle: `District ${parsed.localId.replace(/^0+/, '')}`,
-        sort: makeSort(title),
-        localId: parsed.localId,
-        division_id: 'congress',
-        sourceData: {
-          'census-tiger-congress': {
-            about: 'See specific version for original data.',
-            url: 'https://www.census.gov/geo/maps-data/data/cbf/cbf_cds.html'
+      // Create boundary version
+      let boundaryVersion = {
+        model: models.BoundaryVersion,
+        record: {
+          id: boundaryVersionId,
+          name: boundaryVersionId,
+          localId: parsed.localId,
+          fips: parsed.fips,
+          geoid: parsed.geoid,
+          affgeoid: parsed.affgeoid,
+          // Use date strings so that Sequelize/postgres doesn't get
+          // offset by timezones
+          start: congress.start.format('YYYY-MM-DD'),
+          end: congress.end.format('YYYY-MM-DD'),
+          geometry: district.geometry,
+          boundary_id: boundaryId,
+          sourceData: {
+            'census-tiger-congress': {
+              url: 'https://www.census.gov/geo/maps-data/data/cbf/cbf_cds.html',
+              data: p
+            }
           }
         }
-      }
-    })
-    .then(async r => {
-      await r[0].addParents([state.get('id')], { transaction });
-      return r;
-    });
-
-  // Create boundary version
-  let boundaryVersion = await db.findOrCreateOne(models.BoundaryVersion, {
-    transaction,
-    where: { id: boundaryVersionId },
-    include: models.BoundaryVersion.__associations,
-    defaults: {
-      id: boundaryVersionId,
-      name: boundaryVersionId,
-      localId: parsed.localId,
-      fips: parsed.fips,
-      geoid: parsed.geoid,
-      affgeoid: parsed.affgeoid,
-      start: congress.start,
-      end: congress.end,
-      geometry: district.geometry,
-      boundary_id: boundaryId,
-      sourceData: {
-        'census-tiger-congress': {
-          url: 'https://www.census.gov/geo/maps-data/data/cbf/cbf_cds.html',
-          data: p
-        }
-      }
+      };
+      records.push(boundaryVersion);
     }
-  });
+  }
 
-  return [boundary, boundaryVersion];
-}
+  // Import records
+  return await importRecords(records, {
+    db,
+    logger,
+    options: argv
+  });
+};
 
 // Processing each congress
 function congresses() {
-  let defaultParser = (input, congress) => {
+  let defaultParser = input => {
     return {
       localId: `${input['CD' + input.CDSESSN + 'FP']}`,
       state: input.STATEFP,
@@ -221,7 +153,7 @@ function congresses() {
     115: [
       {
         url:
-          'http://www2.census.gov/geo/tiger/GENZ2017/shp/cb_2017_us_cd115_500k.zip',
+          'https://www2.census.gov/geo/tiger/GENZ2017/shp/cb_2017_us_cd115_500k.zip',
         shapefile: 'cb_2017_us_cd115_500k.shp',
         start: moment('2017-01-01'),
         end: moment('2017-12-31'),
@@ -229,7 +161,7 @@ function congresses() {
       },
       {
         url:
-          'http://www2.census.gov/geo/tiger/GENZ2016/shp/cb_2016_us_cd115_500k.zip',
+          'https://www2.census.gov/geo/tiger/GENZ2016/shp/cb_2016_us_cd115_500k.zip',
         shapefile: 'cb_2016_us_cd115_500k.shp',
         start: moment('2016-01-01'),
         end: moment('2016-12-31'),
@@ -239,7 +171,7 @@ function congresses() {
     114: [
       {
         url:
-          'http://www2.census.gov/geo/tiger/GENZ2015/shp/cb_2015_us_cd114_500k.zip',
+          'https://www2.census.gov/geo/tiger/GENZ2015/shp/cb_2015_us_cd114_500k.zip',
         shapefile: 'cb_2015_us_cd114_500k.shp',
         start: moment('2015-01-01'),
         end: moment('2015-12-31'),
@@ -247,7 +179,7 @@ function congresses() {
       },
       {
         url:
-          'http://www2.census.gov/geo/tiger/GENZ2014/shp/cb_2014_us_cd114_500k.zip',
+          'https://www2.census.gov/geo/tiger/GENZ2014/shp/cb_2014_us_cd114_500k.zip',
         shapefile: 'cb_2014_us_cd114_500k.shp',
         start: moment('2014-01-01'),
         end: moment('2014-12-31'),
@@ -257,7 +189,7 @@ function congresses() {
     113: [
       {
         url:
-          'http://www2.census.gov/geo/tiger/GENZ2013/cb_2013_us_cd113_500k.zip',
+          'https://www2.census.gov/geo/tiger/GENZ2013/cb_2013_us_cd113_500k.zip',
         shapefile: 'cb_2013_us_cd113_500k.shp',
         start: moment('2012-01-01'),
         end: moment('2013-12-31'),
@@ -277,11 +209,11 @@ function congresses() {
     111: [
       {
         url:
-          'http://www2.census.gov/geo/tiger/GENZ2010/gz_2010_us_500_11_5m.zip',
+          'https://www2.census.gov/geo/tiger/GENZ2010/gz_2010_us_500_11_5m.zip',
         shapefile: 'gz_2010_us_500_11_5m.shp',
         start: moment('2008-01-01'),
         end: moment('2009-12-31'),
-        parser: (input, congress) => {
+        parser: input => {
           return {
             localId: input.CD,
             state: input.STATE,
@@ -299,7 +231,7 @@ function congresses() {
         shapefile: 'cd99_110.shp',
         start: moment('2006-01-01'),
         end: moment('2007-12-31'),
-        parser: (input, congress) => {
+        parser: input => {
           return {
             localId: input.CD,
             state: input.STATE,
