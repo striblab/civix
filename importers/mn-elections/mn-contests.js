@@ -5,43 +5,29 @@
 // Dependencies
 const _ = require('lodash');
 const MNElections = require('../../lib/mn-elections.js').MNElections;
-const ensureMNAPISource = require('./source-mn-sos-api.js');
+const moment = require('moment-timezone');
 const debug = require('debug')('civix:importer:mn-contests');
 
 // Import function
 module.exports = async function mnElectionsMNContestsImporter({
   logger,
   models,
-  db
+  db,
+  argv
 }) {
   logger('info', 'MN (via API) Contests importer...');
 
-  // Election information
-  const electionString = '2018-08-14';
-  const electionDate = new Date(electionString);
-  const electionDateId = electionString.replace(/-/g, '');
-  const electionRecord = {
-    id: `mn-${electionDateId}`,
-    name: `mn-${electionDateId}`,
-    title: `Minnesota Primary ${electionString}`,
-    shortTitle: 'MN Primary',
-    sort: `${electionDateId} minnesota primary`,
-    date: electionDate,
-    type: 'primary',
-    boundary_id: 'state-mn',
-    sourceData: {
-      'civix-ap-elex': {
-        manual: true
-      }
-    }
-  };
+  // Make sure election is given
+  if (!argv.election) {
+    throw new Error(
+      'An election argument must be provided, for example --election="2018-11-06"'
+    );
+  }
 
-  // Get elex candidates (via results)
-  const mnElections = new MNElections({
-    logger,
-    defaultElection: electionDateId
-  });
-  const contests = await mnElections.results();
+  // Check for ignore AP level
+  if (argv.ignoreAp) {
+    logger('info', 'Ignoring API level data.');
+  }
 
   // Create transaction
   const transaction = await db.sequelize.transaction();
@@ -49,36 +35,41 @@ module.exports = async function mnElectionsMNContestsImporter({
   // Wrap to catch any issues and rollback
   try {
     // Gather results
-    let results = [];
+    let importResults = [];
 
-    // Make common source
-    let sourceResult = await ensureMNAPISource({ models, transaction });
-    results.push(sourceResult);
-    let source = sourceResult[0];
-
-    // Create election
-    let electionRecordResults = await db.findOrCreateOne(models.Election, {
-      where: { id: electionRecord.id },
-      defaults: electionRecord,
-      transaction
+    // Get election
+    let election = await models.Election.findOne({
+      where: {
+        id: `usa-mn-${argv.election.replace(/-/g, '')}`
+      }
     });
-    results.push(electionRecordResults);
-    let election = electionRecordResults[0];
+    if (!election) {
+      throw new Error(
+        `Unable to find election: ${argv.state}-${argv.election}`
+      );
+    }
+
+    // Get mn-elections-api contests
+    const mnElections = new MNElections({
+      logger,
+      defaultElection: moment(election.get('date')).format('YYYYMMDD')
+    });
+    const contests = await mnElections.results();
 
     // Import results
-    results = results.concat(
+    importResults = importResults.concat(
       await importContests({
         contests,
         db,
         transaction,
         models,
-        source,
-        election
+        election,
+        argv
       })
     );
 
     // Log changes
-    _.filter(results).forEach(u => {
+    _.filter(importResults).forEach(u => {
       if (!u || !u[0]) {
         return;
       }
@@ -109,9 +100,30 @@ async function importContests({
   models,
   transaction,
   source,
-  election
+  election,
+  argv
 }) {
   let results = [];
+
+  // Filter out any type that are from the AP
+  if (argv.ignoreAp) {
+    contests = _.filter(contests, c => {
+      return (
+        [
+          'state-house',
+          'state-enate',
+          'state',
+          'us-senate',
+          'us-house',
+          'judicial',
+          'judicial-district'
+        ].indexOf(c.type) === -1
+      );
+    });
+  }
+
+  console.log(contests);
+  sdfsdfdf();
 
   for (let contest of contests) {
     results = results.concat(
@@ -140,15 +152,6 @@ async function importContest({
 }) {
   let original = _.cloneDeep(contest);
   let results = [];
-
-  // Ignore races that AP covers
-  if (
-    ~['state-house', 'state', 'us-senate', 'us-house', 'judicial'].indexOf(
-      contest.type
-    )
-  ) {
-    return [];
-  }
 
   // TODO: Body
   let body;
@@ -249,20 +252,18 @@ async function importContest({
       middle: candidate.middle,
       prefix: candidate.prefix,
       suffix: candidate.suffix,
-      fullName: _
-        .filter([
-          candidate.prefix,
-          candidate.first,
-          candidate.middle,
-          candidate.last,
-          candidate.suffix ? `, ${candidate.suffix}` : null
-        ])
+      fullName: _.filter([
+        candidate.prefix,
+        candidate.first,
+        candidate.middle,
+        candidate.last,
+        candidate.suffix ? `, ${candidate.suffix}` : null
+      ])
         .join(' ')
         .trim(),
       // TODO
       shortName: undefined,
-      sort: _
-        .filter([candidate.last, candidate.first])
+      sort: _.filter([candidate.last, candidate.first])
         .join(', ')
         .trim()
         .toLowerCase(),

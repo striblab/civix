@@ -6,12 +6,9 @@
  */
 
 // Dependencies
-const _ = require('lodash');
-const fs = require('fs');
 const moment = require('moment');
-const reproject = require('../../lib/reproject.js');
-const { makeSort, makeId } = require('../../lib/strings.js');
-const { download } = require('../../lib/download.js');
+const { makeSort } = require('../../lib/strings.js');
+const { importRecords, processGeo } = require('../../lib/importing.js');
 
 // Import function
 module.exports = async function mnStateLegStateHouseImporter({
@@ -20,8 +17,6 @@ module.exports = async function mnStateLegStateHouseImporter({
   db,
   argv
 }) {
-  let results = [];
-
   // Look for year from argv
   if (!argv.year) {
     throw new Error(
@@ -36,136 +31,47 @@ module.exports = async function mnStateLegStateHouseImporter({
       `Unable to find information about District set ${argv.year}`
     );
   }
-
   districtSet.year = argv.year;
+
+  // Log
   logger('info', `MN State Leg: State house ${argv.year} ...`);
 
-  // Start transaction
-  const transaction = await db.sequelize.transaction();
-  try {
-    results = results.concat(
-      await importDistrictSet({
-        districtSet,
-        db,
-        transaction,
-        models,
-        logger
-      })
-    );
-
-    // Log changes
-    _.filter(results).forEach(u => {
-      if (!u || !u[0]) {
-        return;
-      }
-
-      logger(
-        'info',
-        `[${u[0].constructor.name}] ${u[1] ? 'Created' : 'Existed'}: ${
-          u[0].dataValues.id
-        }`
-      );
-    });
-
-    // Commit
-    transaction.commit();
-    logger('info', 'Transaction committed.');
-  }
-  catch (error) {
-    transaction.rollback();
-    logger('error', 'Transaction rolled back; no data changes were made.');
-    logger('error', error.stack ? error.stack : error);
-  }
-};
-
-// Import a set
-async function importDistrictSet({
-  districtSet,
-  db,
-  transaction,
-  models,
-  logger
-}) {
-  let results = [];
-  logger(
-    'info',
-    'Downloading shapes, can take a moment if not already cached ...'
-  );
-
-  // Get file
-  let dl = await download({
-    ttl: 1000 * 60 * 60 * 24 * 30,
+  // Get geo
+  let districts = await processGeo({
     url: districtSet.url,
-    output: districtSet.output
+    outputName: districtSet.output,
+    filter: districtSet.filter,
+    group: districtSet.grouping,
+    inputProjection: 'EPSG:26915',
+    logger
   });
 
-  // Get data
-  let districts = JSON.parse(fs.readFileSync(dl.output, 'utf-8'));
-
-  // Reproject and multipolygon
-  for (let fi in districts.features) {
-    districts.features[fi] = await reproject(
-      districts.features[fi],
-      'EPSG:26915',
-      'EPSG:4326'
-    );
-
-    if (districts.features[fi].geometry.type === 'Polygon') {
-      districts.features[fi].geometry.type = 'MultiPolygon';
-      districts.features[fi].geometry.coordinates = [
-        districts.features[fi].geometry.coordinates
-      ];
-    }
-  }
+  // Records to collect
+  let records = [];
 
   // Go through districts
   for (let district of districts.features) {
-    results = results.concat(
-      await importDistrict({
-        districtSet,
-        district,
-        db,
-        models,
-        transaction
-      })
-    );
-  }
+    let p = district.properties;
+    let parsed = districtSet.parser(p, districtSet);
+    let boundaryId = `usa-mn-state-lower-${parsed.geoid.toLowerCase()}`;
+    let boundaryVersionId = `${districtSet.start.year()}-${boundaryId}`;
+    let title = `Minnesota State House District ${parsed.localId.replace(
+      /^0+/,
+      ''
+    )}`;
 
-  return results;
-}
+    // Get state
+    let state = await models.Boundary.findOne({
+      where: { localId: 'mn' }
+    });
+    if (!state) {
+      throw new Error('Unable to find state with localId code: mn');
+    }
 
-// Import a district
-async function importDistrict({
-  districtSet,
-  district,
-  db,
-  transaction,
-  models
-}) {
-  let p = district.properties;
-  let parsed = districtSet.parser(p, districtSet);
-  let boundaryId = `usa-mn-state-lower-${parsed.geoid.toLowerCase()}`;
-  let boundaryVersionId = `${districtSet.start.year()}-${boundaryId}`;
-  let title = `Minnesota State House District ${parsed.localId.replace(
-    /^0+/,
-    ''
-  )}`;
-
-  // Get state
-  let state = await models.Boundary.findOne({
-    where: { localId: 'mn' }
-  });
-  if (!state) {
-    throw new Error('Unable to find state with localId code: mn');
-  }
-
-  // Create general boundary if needed
-  let boundary = await db
-    .findOrCreateOne(models.Boundary, {
-      transaction,
-      where: { id: boundaryId },
-      include: models.Boundary.__associations,
-      defaults: {
+    // Create general boundary if needed
+    let boundary = {
+      model: models.Boundary,
+      record: {
         id: boundaryId,
         name: boundaryId,
         title: title,
@@ -179,38 +85,46 @@ async function importDistrict({
             url: 'https://www.gis.leg.mn/html/download.html'
           }
         }
+      },
+      post: async (r, { transaction }) => {
+        await r[0].addParents([state.get('id')], { transaction });
+        return r;
       }
-    })
-    .then(async r => {
-      await r[0].addParents([state.get('id')], { transaction });
-      return r;
-    });
+    };
+    records.push(boundary);
 
-  // Create boundary version
-  let boundaryVersion = await db.findOrCreateOne(models.BoundaryVersion, {
-    transaction,
-    where: { id: boundaryVersionId },
-    include: models.BoundaryVersion.__associations,
-    defaults: {
-      id: boundaryVersionId,
-      name: boundaryVersionId,
-      localId: parsed.localId.toLowerCase(),
-      geoid: parsed.geoid,
-      start: districtSet.start,
-      end: districtSet.end,
-      geometry: district.geometry,
-      boundary_id: boundaryId,
-      sourceData: {
-        'mn-state-leg': {
-          url: 'https://www.gis.leg.mn/html/download.html',
-          data: p
+    // Create boundary version
+    let boundaryVersion = {
+      model: models.BoundaryVersion,
+      record: {
+        id: boundaryVersionId,
+        name: boundaryVersionId,
+        localId: parsed.localId.toLowerCase(),
+        geoid: parsed.geoid,
+        // Use date strings so that Sequelize/postgres doesn't get
+        // offset by timezones
+        start: districtSet.start.format('YYYY-MM-DD'),
+        end: districtSet.end.format('YYYY-MM-DD'),
+        geometry: district.geometry,
+        boundary_id: boundaryId,
+        sourceData: {
+          'mn-state-leg': {
+            url: 'https://www.gis.leg.mn/html/download.html',
+            data: p
+          }
         }
       }
-    }
-  });
+    };
+    records.push(boundaryVersion);
+  }
 
-  return [boundary, boundaryVersion];
-}
+  // Import records
+  return await importRecords(records, {
+    db,
+    logger,
+    options: argv
+  });
+};
 
 // Processing each congress
 function districtSets() {

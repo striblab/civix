@@ -12,7 +12,8 @@ const debug = require('debug')('civix:importer:mn-contests');
 module.exports = async function mnElectionsMNContestsImporter({
   logger,
   models,
-  db
+  db,
+  argv
 }) {
   logger('info', 'MN Elections API: Elections...');
 
@@ -49,9 +50,11 @@ module.exports = async function mnElectionsMNContestsImporter({
           election.primary ? 'Primary' : 'General'
         }`,
         sort: makeSort(title),
-        date: new Date(dateString),
+        // For date-only fields, pass a string, if use a JS Date, the time zone will
+        // probably affect it.
+        date: dateString,
         type: election.primary ? 'primary' : 'general',
-        special: election.special,
+        special: _.isBoolean(election.special) ? election.special : undefined,
         boundary_id: 'usa-state-mn',
         sourceData: {
           'mn-elections-api': {
@@ -62,11 +65,14 @@ module.exports = async function mnElectionsMNContestsImporter({
       };
 
       results.push(
-        await db.findOrCreateOne(models.Election, {
-          transaction,
-          where: { id: electionRecord.id },
-          defaults: electionRecord
-        })
+        await db[argv.update ? 'updateOrCreateOne' : 'findOrCreateOne'](
+          models.Election,
+          {
+            transaction,
+            where: { id: electionRecord.id },
+            defaults: electionRecord
+          }
+        )
       );
     }
 

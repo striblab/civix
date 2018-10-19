@@ -20,6 +20,12 @@ exports.builder = yargs => {
       'A JS file that exports an importer function, or the path to an importer found in the Civix project, such as `example/example-importer`.',
     type: 'string'
   });
+  yargs.options('update', {
+    describe:
+      'For most importers, importers won\'t update existing data, use this flag to update records that are already there.',
+    type: 'boolean',
+    default: false
+  });
 
   return yargs;
 };
