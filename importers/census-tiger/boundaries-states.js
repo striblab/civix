@@ -27,14 +27,14 @@ module.exports = async function tigerStatesImporter({
   // Download
   let districts = await processGeo({
     url:
-      'https://www2.census.gov/geo/tiger/GENZ2017/shp/cb_2017_us_state_500k.zip',
-    shapePath: 'cb_2017_us_state_500k.shp',
+      'https://www2.census.gov/geo/tiger/TIGER2018/STATE/tl_2018_us_state.zip',
+    shapePath: 'tl_2018_us_state.shp',
     inputProjection: 'EPSG:4269',
     logger
   });
 
   // Go through districts
-  for (let district of districts) {
+  for (let district of districts.features) {
     let p = district.properties;
     let boundaryId = `usa-state-${p.STUSPS.toLowerCase()}`;
     let boundaryVersionId = `2017-${boundaryId}`;
@@ -53,7 +53,7 @@ module.exports = async function tigerStatesImporter({
         sourceData: {
           'census-tiger-states': {
             about: 'Civix importer, see specific version for original data.',
-            url: 'https://www.census.gov/geo/maps-data/data/cbf/cbf_state.html'
+            url: 'https://www.census.gov/geo/maps-data/data/tiger-line.html'
           }
         }
       },
@@ -83,7 +83,7 @@ module.exports = async function tigerStatesImporter({
         sourceData: {
           'census-tiger-states': {
             properties: p,
-            url: 'https://www.census.gov/geo/maps-data/data/cbf/cbf_state.html'
+            url: 'https://www.census.gov/geo/maps-data/data/tiger-line.html'
           }
         }
       }

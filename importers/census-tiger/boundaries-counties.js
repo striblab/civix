@@ -140,12 +140,20 @@ function countySets() {
   };
 
   return {
+    2018: {
+      url:
+        'https://www2.census.gov/geo/tiger/TIGER2018/COUNTY/tl_2018_us_county.zip',
+      shapefile: 'tl_2018_us_county.shp',
+      start: moment('2018-01-01'),
+      end: null,
+      parser: defaultParser
+    },
     2017: {
       url:
         'https://www2.census.gov/geo/tiger/GENZ2017/shp/cb_2017_us_county_500k.zip',
       shapefile: 'cb_2017_us_county_500k.shp',
       start: moment('2017-01-01'),
-      end: null,
+      end: moment('2017-12-31'),
       parser: defaultParser
     }
   };

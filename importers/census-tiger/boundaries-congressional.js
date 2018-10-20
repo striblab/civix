@@ -46,6 +46,7 @@ module.exports = async function tigerStatesImporter({
       url: congress.url,
       shapePath: congress.shapefile,
       inputProjection: 'EPSG:4269',
+      filter: congress.filter,
       logger
     });
 
@@ -148,8 +149,29 @@ function congresses() {
       geoid: input.GEOID
     };
   };
+  let defaultFilter = feature => {
+    return (
+      feature.properties.CDSESSN &&
+      feature.properties[`CD${feature.properties.CDSESSN}FP`] &&
+      feature.properties[`CD${feature.properties.CDSESSN}FP`].toLowerCase() !==
+        'zz' &&
+      feature.properties[`CD${feature.properties.CDSESSN}FP`].toLowerCase() !==
+        '98'
+    );
+  };
 
   return {
+    116: [
+      {
+        url:
+          'https://www2.census.gov/geo/tiger/TIGER2018/CD/tl_2018_us_cd116.zip',
+        shapefile: 'tl_2018_us_cd116.shp',
+        start: moment('2018-01-01'),
+        end: moment('2018-12-31'),
+        parser: defaultParser,
+        filter: defaultFilter
+      }
+    ],
     115: [
       {
         url:
@@ -157,7 +179,8 @@ function congresses() {
         shapefile: 'cb_2017_us_cd115_500k.shp',
         start: moment('2017-01-01'),
         end: moment('2017-12-31'),
-        parser: defaultParser
+        parser: defaultParser,
+        filter: defaultFilter
       },
       {
         url:
@@ -165,7 +188,8 @@ function congresses() {
         shapefile: 'cb_2016_us_cd115_500k.shp',
         start: moment('2016-01-01'),
         end: moment('2016-12-31'),
-        parser: defaultParser
+        parser: defaultParser,
+        filter: defaultFilter
       }
     ],
     114: [
@@ -175,7 +199,8 @@ function congresses() {
         shapefile: 'cb_2015_us_cd114_500k.shp',
         start: moment('2015-01-01'),
         end: moment('2015-12-31'),
-        parser: defaultParser
+        parser: defaultParser,
+        filter: defaultFilter
       },
       {
         url:
@@ -183,7 +208,8 @@ function congresses() {
         shapefile: 'cb_2014_us_cd114_500k.shp',
         start: moment('2014-01-01'),
         end: moment('2014-12-31'),
-        parser: defaultParser
+        parser: defaultParser,
+        filter: defaultFilter
       }
     ],
     113: [
@@ -193,7 +219,8 @@ function congresses() {
         shapefile: 'cb_2013_us_cd113_500k.shp',
         start: moment('2012-01-01'),
         end: moment('2013-12-31'),
-        parser: defaultParser
+        parser: defaultParser,
+        filter: defaultFilter
       }
     ],
     112: [
@@ -203,7 +230,8 @@ function congresses() {
         shapefile: 'tl_2011_us_cd112.shp',
         start: moment('2010-01-01'),
         end: moment('2011-12-31'),
-        parser: defaultParser
+        parser: defaultParser,
+        filter: defaultFilter
       }
     ],
     111: [
@@ -221,6 +249,9 @@ function congresses() {
             affgeoid: input.GEO_ID,
             geoid: input.GEO_ID ? input.GEO_ID.substr(-4) : null
           };
+        },
+        filter: feature => {
+          return feature.properties.CD;
         }
       }
     ],
@@ -239,6 +270,9 @@ function congresses() {
             affgeoid: null,
             geoid: `${input.STATE}${input.CD}`
           };
+        },
+        filter: feature => {
+          return feature.properties.CD;
         }
       }
     ]
