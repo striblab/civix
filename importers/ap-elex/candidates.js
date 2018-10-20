@@ -5,8 +5,7 @@
 // Dependencies
 const _ = require('lodash');
 const Elex = require('../../lib/elex.js').Elex;
-const { makeSort, makeId } = require('../../lib/strings.js');
-const contestParser = require('./lib/ap-elex-contests.js');
+const contestParser = require('./lib/parse-contests.js');
 
 // Import function
 module.exports = async function coreDataElexRacesImporter({
