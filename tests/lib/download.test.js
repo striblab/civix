@@ -51,4 +51,23 @@ describe('downloader', () => {
       fs.existsSync(path.join(i.output, 'strib-icons-master', 'README.md'))
     ).toBe(true);
   });
+
+  // Can download ftp file
+  test('can download ftp file', async () => {
+    let d = new Downloader({
+      cachePath: path.join(__dirname, '.cache')
+    });
+    let options = {
+      ttl: 30 * 1000,
+      url:
+        'ftp://ftp.gisdata.mn.gov/pub/gdrs/data/pub/us_mn_state_mde/bdry_school_district_boundaries/shp_bdry_school_district_boundaries.zip'
+    };
+    let i = await d.download(options);
+
+    expect(i).toHaveProperty('output');
+    expect(fs.existsSync(i.output)).toBe(true);
+    expect(
+      fs.existsSync(path.join(i.output, 'school_district_boundaries.shp'))
+    ).toBe(true);
+  });
 });
