@@ -6,6 +6,7 @@
 const _ = require('lodash');
 const Elex = require('../../lib/elex.js').Elex;
 const contestParser = require('./lib/parse-contests.js');
+const { importRecords } = require('../../lib/importing.js');
 
 // Import function
 module.exports = async function coreDataElexRacesImporter({
@@ -35,166 +36,94 @@ module.exports = async function coreDataElexRacesImporter({
   const elex = new Elex({ logger, defaultElection: argv.election });
   const results = await elex.results();
 
-  // Create transaction
-  const transaction = await db.sequelize.transaction();
+  // Records for db
+  let records = [];
 
-  // Wrap to catch any issues and rollback
-  try {
-    // Gather results
-    let importResults = [];
-
-    // Get election
-    let election = await models.Election.findOne({
-      where: {
-        id: `usa-${argv.state}-${argv.election.replace(/-/g, '')}`
-      }
-    });
-    if (!election) {
-      throw new Error(
-        `Unable to find election: ${argv.state}-${argv.election}`
-      );
+  // Get election
+  let election = await models.Election.findOne({
+    where: {
+      id: `usa-${argv.state}-${argv.election.replace(/-/g, '')}`
     }
-
-    // Filter candidates to just the top level
-    let candidates = _.filter(results, r => {
-      return (
-        r.statepostal === argv.state.toUpperCase() &&
-        r.reportingunitid.match(/^state/i)
-      );
-    });
-
-    // Import candidates
-    importResults = importResults.concat(
-      await importCandidates({
-        candidates,
-        db,
-        transaction,
-        models,
-        election
-      })
-    );
-
-    // Log changes
-    _.filter(
-      importResults.forEach(u => {
-        logger(
-          'info',
-          `[${u[0].constructor.name}] ${u[1] ? 'Created' : 'Existed'}: ${
-            u[0].dataValues.id
-          }`
-        );
-      })
-    );
-
-    // Commit
-    transaction.commit();
-    logger('info', 'Transaction committed.');
+  });
+  if (!election) {
+    throw new Error(`Unable to find election: ${argv.state}-${argv.election}`);
   }
-  catch (error) {
-    transaction.rollback();
-    logger('error', 'Transaction rolled back; no data changes were made.');
-    logger('error', error.stack ? error.stack : error);
-    process.exit(1);
-  }
-};
 
-// Import candidates
-async function importCandidates({
-  candidates,
-  db,
-  transaction,
-  models,
-  election
-}) {
-  let results = [];
+  // Filter candidates to just the top level
+  let candidates = _.filter(results, r => {
+    return (
+      r.statepostal === argv.state.toUpperCase() &&
+      r.reportingunitid.match(/^state/i)
+    );
+  });
 
   for (let candidate of candidates) {
-    results = results.concat(
-      await importCandidate({
-        election,
-        candidate,
-        db,
-        models,
-        transaction
-      })
-    );
-  }
+    // Parse out some of the high level data and Ids
+    let parsedContest = contestParser(candidate, { election });
 
-  return results;
-}
-
-// Import single candidate
-async function importCandidate({
-  election,
-  candidate,
-  db,
-  models,
-  transaction
-}) {
-  // Parse out some of the high level data and Ids
-  let parsedContest = contestParser(candidate, { election });
-
-  // Get party.  AP doesn't use DFL, though it should
-  let party;
-  if (candidate.party.toLowerCase() === 'dem') {
-    party = await models.Party.findOne({
-      where: { id: 'dfl' },
-      transaction
-    });
-  }
-  // No party
-  else if (candidate.party.toLowerCase() === 'np') {
-    party = await models.Party.findOne({
-      where: { id: 'np' },
-      transaction
-    });
-  }
-  else {
-    party = await models.Party.findOne({
-      where: { apId: candidate.party.toLowerCase() },
-      transaction
-    });
-  }
-
-  // Assume unknown party is non-partisan
-  if (!party) {
-    throw new Error(`Unable to find party: ${candidate.party}`);
-  }
-
-  // Some common values
-  let id = `${parsedContest.contest.id}-${candidate.candidateid}`;
-
-  // Create candidate record
-  let candidateRecord = {
-    id,
-    name: id,
-    party_id: party.get('id'),
-    apId: candidate.candidateid,
-    apIdHistory: { [election.get('id')]: candidate.candidateid },
-    first: candidate.first,
-    last: candidate.last,
-    fullName: _.filter([candidate.first, candidate.last])
-      .join(' ')
-      .trim(),
-    // TODO
-    shortName: undefined,
-    sort: _.filter([candidate.last, candidate.first])
-      .join(', ')
-      .trim()
-      .toLowerCase(),
-    sourceData: {
-      'ap-elex': {
-        about: 'Taken from results level data',
-        data: candidate
-      }
+    // Get party.  AP doesn't use DFL, though it should
+    let party;
+    if (candidate.party.toLowerCase() === 'dem') {
+      party = await models.Party.findOne({
+        where: { id: 'dfl' }
+      });
     }
-  };
+    // No party
+    else if (candidate.party.toLowerCase() === 'np') {
+      party = await models.Party.findOne({
+        where: { id: 'np' }
+      });
+    }
+    else {
+      party = await models.Party.findOne({
+        where: { apId: candidate.party.toLowerCase() }
+      });
+    }
 
-  return [
-    await db.findOrCreateOne(models.Candidate, {
-      where: { id: candidateRecord.id },
-      defaults: candidateRecord,
-      transaction
-    })
-  ];
-}
+    // Throw if no party found
+    if (!party) {
+      throw new Error(`Unable to find party: ${candidate.party}`);
+    }
+
+    // Some common values
+    let id = `${parsedContest.contest.id}-${candidate.candidateid}`;
+
+    // Create candidate record
+    let candidateRecord = {
+      id,
+      name: id,
+      party_id: party.get('id'),
+      apId: candidate.candidateid,
+      apIdHistory: { [election.get('id')]: candidate.candidateid },
+      first: candidate.first,
+      last: candidate.last,
+      fullName: _.filter([candidate.first, candidate.last])
+        .join(' ')
+        .trim(),
+      // TODO
+      shortName: undefined,
+      sort: _.filter([candidate.last, candidate.first])
+        .join(', ')
+        .trim()
+        .toLowerCase(),
+      sourceData: {
+        'ap-elex': {
+          about: 'Taken from results level data',
+          data: candidate
+        }
+      }
+    };
+
+    records.push({
+      model: models.Candidate,
+      record: candidateRecord
+    });
+  }
+
+  // Import records
+  return await importRecords(records, {
+    db,
+    logger,
+    options: argv
+  });
+};

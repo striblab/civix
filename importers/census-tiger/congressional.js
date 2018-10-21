@@ -54,7 +54,6 @@ module.exports = async function tigerStatesImporter({
     for (let district of districts.features) {
       let p = district.properties;
       let parsed = congress.parser(p, congress);
-      console.log(parsed.geoid, congressSet.congress);
       let boundaryId = `usa-congressional-district-${parsed.geoid}`;
       let boundaryVersionId = `${
         congressSet.congress
