@@ -6,7 +6,7 @@
 const _ = require('lodash');
 const MNElections = require('../../lib/mn-elections.js').MNElections;
 const { makeSort } = require('../../lib/strings.js');
-const debug = require('debug')('civix:importer:mn-contests');
+const { importRecords } = require('../../lib/importing.js');
 
 // Import function
 module.exports = async function mnElectionsMNContestsImporter({
@@ -23,80 +23,49 @@ module.exports = async function mnElectionsMNContestsImporter({
   });
   const elections = await mnElections.elections();
 
-  // Create transaction
-  const transaction = await db.sequelize.transaction();
+  // Collect records to save
+  let records = [];
 
-  // Wrap to catch any issues and rollback
-  try {
-    // Gather results
-    let results = [];
-
-    // Go through and make election entries
-    for (let ei in elections) {
-      let election = elections[ei];
-      election.id = election.id || ei;
-      let dateString = election.id.replace(
-        /^([0-9]{4})([0-9]{2})([0-9]{2})$/,
-        '$1-$2-$3'
-      );
-      let title = `Minnesota ${election.special ? 'Special ' : ''}${
+  // Go through and make election entries
+  for (let ei in elections) {
+    let election = elections[ei];
+    election.id = election.id || ei;
+    let dateString = election.id.replace(
+      /^([0-9]{4})([0-9]{2})([0-9]{2})$/,
+      '$1-$2-$3'
+    );
+    let title = `Minnesota ${election.special ? 'Special ' : ''}${
+      election.primary ? 'Primary' : 'General'
+    } ${dateString}`;
+    let electionRecord = {
+      id: `usa-mn-${election.id}`,
+      name: `usa-mn-${election.id}`,
+      title: title,
+      shortTitle: `MN ${election.special ? 'Special ' : ''}${
         election.primary ? 'Primary' : 'General'
-      } ${dateString}`;
-      let electionRecord = {
-        id: `usa-mn-${election.id}`,
-        name: `usa-mn-${election.id}`,
-        title: title,
-        shortTitle: `MN ${election.special ? 'Special ' : ''}${
-          election.primary ? 'Primary' : 'General'
-        }`,
-        sort: makeSort(title),
-        // For date-only fields, pass a string, if use a JS Date, the time zone will
-        // probably affect it.
-        date: dateString,
-        type: election.primary ? 'primary' : 'general',
-        special: _.isBoolean(election.special) ? election.special : undefined,
-        boundary_id: 'usa-state-mn',
-        sourceData: {
-          'mn-elections-api': {
-            url: 'https://github.com/striblab/mn-elections-api',
-            data: election
-          }
+      }`,
+      sort: makeSort(title),
+      // For date-only fields, pass a string, if use a JS Date, the time zone will
+      // probably affect it.
+      date: dateString,
+      type: election.primary ? 'primary' : 'general',
+      special: _.isBoolean(election.special) ? election.special : undefined,
+      boundary_id: 'usa-state-mn',
+      sourceData: {
+        'mn-elections-api': {
+          url: 'https://github.com/striblab/mn-elections-api',
+          data: election
         }
-      };
-
-      results.push(
-        await db[argv.update ? 'updateOrCreateOne' : 'findOrCreateOne'](
-          models.Election,
-          {
-            transaction,
-            where: { id: electionRecord.id },
-            defaults: electionRecord
-          }
-        )
-      );
-    }
-
-    // Log changes
-    _.filter(results).forEach(u => {
-      if (!u || !u[0]) {
-        return;
       }
+    };
 
-      logger(
-        'info',
-        `[${u[0].constructor.name}] ${u[1] ? 'Created' : 'Existed'}: ${
-          u[0].dataValues.id
-        }`
-      );
-    });
+    records.push({ model: models.Election, record: electionRecord });
+  }
 
-    // Commit
-    transaction.commit();
-    logger('info', 'Transaction committed.');
-  }
-  catch (error) {
-    transaction.rollback();
-    logger('error', 'Transaction rolled back; no data changes were made.');
-    logger('error', error.stack ? error.stack : error);
-  }
+  // Import records
+  return await importRecords(records, {
+    db,
+    logger,
+    options: argv
+  });
 };

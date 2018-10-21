@@ -7,7 +7,8 @@
 // Dependencies
 const _ = require('lodash');
 const Elex = require('../../lib/elex.js').Elex;
-const contestParser = require('./lib/ap-elex-contests.js');
+const contestParser = require('./lib/parse-contests.js');
+const { importRecords } = require('../../lib/importing.js');
 
 // Import function
 module.exports = async function coreDataElexRacesImporter({
@@ -37,154 +38,78 @@ module.exports = async function coreDataElexRacesImporter({
   const elex = new Elex({ logger, defaultElection: argv.election });
   const results = await elex.results();
 
-  // Create transaction
-  const transaction = await db.sequelize.transaction();
-
-  // Wrap to catch any issues and rollback
-  try {
-    // Gather results
-    let importResults = [];
-
-    // Get election
-    let election = await models.Election.findOne({
-      where: {
-        id: `usa-${argv.state}-${argv.election.replace(/-/g, '')}`
-      }
-    });
-    if (!election) {
-      throw new Error(
-        `Unable to find election: ${argv.state}-${argv.election}`
-      );
+  // Get election
+  let election = await models.Election.findOne({
+    where: {
+      id: `usa-${argv.state}-${argv.election.replace(/-/g, '')}`
     }
-
-    // Filter contests to just the top level
-    let contests = _.filter(results, r => {
-      return (
-        r.statepostal === argv.state.toUpperCase() &&
-        r.ballotorder === 1 &&
-        r.reportingunitid.match(/^state/i)
-      );
-    });
-
-    // Make contests (AP calls them races)
-    importResults = importResults.concat(
-      await importContests({
-        contests,
-        db,
-        transaction,
-        models,
-        election
-      })
-    );
-
-    // Log changes
-    _.filter(
-      importResults.forEach(u => {
-        logger(
-          'info',
-          `[${u[0].constructor.name}] ${u[1] ? 'Created' : 'Existed'}: ${
-            u[0].dataValues.id
-          }`
-        );
-      })
-    );
-
-    // Commit
-    transaction.commit();
-    logger('info', 'Transaction committed.');
+  });
+  if (!election) {
+    throw new Error(`Unable to find election: ${argv.state}-${argv.election}`);
   }
-  catch (error) {
-    transaction.rollback();
-    logger('error', 'Transaction rolled back; no data changes were made.');
-    logger('error', error.stack ? error.stack : error);
-    process.exit(1);
-  }
-};
 
-// Import contests
-async function importContests({
-  contests,
-  db,
-  models,
-  transaction,
-  source,
-  election
-}) {
-  let results = [];
+  // Filter contests to just the top level
+  let contests = _.filter(results, r => {
+    return (
+      r.statepostal === argv.state.toUpperCase() &&
+      r.ballotorder === 1 &&
+      r.reportingunitid.match(/^state/i)
+    );
+  });
+
+  // Records for db
+  let records = [];
 
   for (let contest of contests) {
-    results = results.concat(
-      await importContest({
-        election,
-        contest,
-        db,
-        models,
-        transaction,
-        source
-      })
-    );
-  }
+    // Parse out parts
+    let parsed = contestParser(contest, { election });
 
-  return results;
-}
-
-// Import specific race
-async function importContest({ election, contest, db, models, transaction }) {
-  let results = [];
-
-  // Parse out parts
-  let parsed = contestParser(contest, { election });
-
-  // Put together
-  if (parsed.body) {
-    results.push(
-      await db.findOrCreateOne(models.Body, {
-        where: { id: parsed.body.id },
-        defaults: _.extend(parsed.body, {
+    // Put together
+    if (parsed.body) {
+      records.push({
+        model: models.Body,
+        record: _.extend(parsed.body, {
           sourceData: {
             'ap-elex': {
               about: 'Taken from results level data',
               data: contest
             }
           }
-        }),
-        transaction
-      })
-    );
-  }
-  if (parsed.office) {
-    results.push(
-      await db.findOrCreateOne(models.Office, {
-        where: { id: parsed.office.id },
-        defaults: _.extend(parsed.office, {
+        })
+      });
+    }
+    if (parsed.office) {
+      records.push({
+        model: models.Office,
+        record: _.extend(parsed.office, {
           sourceData: {
             'ap-elex': {
               about: 'Taken from results level data',
               data: contest
             }
           }
-        }),
-        transaction
-      })
-    );
-  }
-  if (parsed.contest) {
-    results.push(
-      await db.findOrCreateOne(models.Contest, {
-        where: { id: parsed.contest.id },
-        defaults: _.extend(parsed.contest, {
+        })
+      });
+    }
+    if (parsed.contest) {
+      records.push({
+        model: models.Contest,
+        record: _.extend(parsed.contest, {
           sourceData: {
             'ap-elex': {
               about: 'Taken from results level data',
               data: contest
             }
           }
-        }),
-        transaction,
-        include: []
-      })
-    );
+        })
+      });
+    }
   }
 
-  return results;
-}
+  // Import records
+  return await importRecords(records, {
+    db,
+    logger,
+    options: argv
+  });
+};

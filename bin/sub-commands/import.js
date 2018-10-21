@@ -44,7 +44,7 @@ exports.handler = async argv => {
   // Check for exists
   if (!fs.existsSync(importer)) {
     logger.p('error', `Unable to find importer at ${importer}`);
-    return;
+    process.exit(1);
   }
 
   // Try to require
@@ -57,6 +57,7 @@ exports.handler = async argv => {
       'error',
       `Unable to require ${importer}: ${config.debug ? e.stack : ''}`
     );
+    process.exit(1);
   }
 
   // Setup
@@ -70,6 +71,7 @@ exports.handler = async argv => {
       'error',
       `Issue with syncing to database: ${e}: ${config.debug ? e.stack : ''}`
     );
+    process.exit(1);
   }
 
   // Run importer
@@ -87,6 +89,7 @@ exports.handler = async argv => {
       'error',
       `Importer ran into error: ${e}: ${config.debug ? e.stack : ''}`
     );
+    process.exit(1);
   }
 
   await db.close();

@@ -54,6 +54,7 @@ module.exports = async function tigerStatesImporter({
     for (let district of districts.features) {
       let p = district.properties;
       let parsed = congress.parser(p, congress);
+      console.log(parsed.geoid, congressSet.congress);
       let boundaryId = `usa-congressional-district-${parsed.geoid}`;
       let boundaryVersionId = `${
         congressSet.congress
@@ -166,8 +167,8 @@ function congresses() {
         url:
           'https://www2.census.gov/geo/tiger/TIGER2018/CD/tl_2018_us_cd116.zip',
         shapefile: 'tl_2018_us_cd116.shp',
-        start: moment('2018-01-01'),
-        end: moment('2018-12-31'),
+        start: moment('2019-01-01'),
+        end: moment('2020-12-31'),
         parser: defaultParser,
         filter: defaultFilter
       }
@@ -177,8 +178,8 @@ function congresses() {
         url:
           'https://www2.census.gov/geo/tiger/GENZ2017/shp/cb_2017_us_cd115_500k.zip',
         shapefile: 'cb_2017_us_cd115_500k.shp',
-        start: moment('2017-01-01'),
-        end: moment('2017-12-31'),
+        start: moment('2018-01-01'),
+        end: moment('2018-12-31'),
         parser: defaultParser,
         filter: defaultFilter
       },
@@ -186,8 +187,8 @@ function congresses() {
         url:
           'https://www2.census.gov/geo/tiger/GENZ2016/shp/cb_2016_us_cd115_500k.zip',
         shapefile: 'cb_2016_us_cd115_500k.shp',
-        start: moment('2016-01-01'),
-        end: moment('2016-12-31'),
+        start: moment('2017-01-01'),
+        end: moment('2017-12-31'),
         parser: defaultParser,
         filter: defaultFilter
       }
@@ -197,8 +198,8 @@ function congresses() {
         url:
           'https://www2.census.gov/geo/tiger/GENZ2015/shp/cb_2015_us_cd114_500k.zip',
         shapefile: 'cb_2015_us_cd114_500k.shp',
-        start: moment('2015-01-01'),
-        end: moment('2015-12-31'),
+        start: moment('2016-01-01'),
+        end: moment('2016-12-31'),
         parser: defaultParser,
         filter: defaultFilter
       },
@@ -206,8 +207,8 @@ function congresses() {
         url:
           'https://www2.census.gov/geo/tiger/GENZ2014/shp/cb_2014_us_cd114_500k.zip',
         shapefile: 'cb_2014_us_cd114_500k.shp',
-        start: moment('2014-01-01'),
-        end: moment('2014-12-31'),
+        start: moment('2015-01-01'),
+        end: moment('2015-12-31'),
         parser: defaultParser,
         filter: defaultFilter
       }
@@ -217,8 +218,8 @@ function congresses() {
         url:
           'https://www2.census.gov/geo/tiger/GENZ2013/cb_2013_us_cd113_500k.zip',
         shapefile: 'cb_2013_us_cd113_500k.shp',
-        start: moment('2012-01-01'),
-        end: moment('2013-12-31'),
+        start: moment('2013-01-01'),
+        end: moment('2014-12-31'),
         parser: defaultParser,
         filter: defaultFilter
       }
@@ -228,9 +229,19 @@ function congresses() {
         url:
           'https://www2.census.gov/geo/tiger/TIGER2011/CD/tl_2011_us_cd112.zip',
         shapefile: 'tl_2011_us_cd112.shp',
-        start: moment('2010-01-01'),
-        end: moment('2011-12-31'),
-        parser: defaultParser,
+        start: moment('2011-01-01'),
+        end: moment('2012-12-31'),
+        parser: input => {
+          // The GEOID has the congressional session in it for some reason.
+          let localId = `${input['CD' + input.CDSESSN + 'FP']}`;
+          return {
+            localId,
+            state: input.STATEFP,
+            fips: `${input.STATEFP}${localId}`,
+            affgeoid: input.AFFGEOID,
+            geoid: `${input.STATEFP}${localId}`
+          };
+        },
         filter: defaultFilter
       }
     ],
@@ -239,8 +250,8 @@ function congresses() {
         url:
           'https://www2.census.gov/geo/tiger/GENZ2010/gz_2010_us_500_11_5m.zip',
         shapefile: 'gz_2010_us_500_11_5m.shp',
-        start: moment('2008-01-01'),
-        end: moment('2009-12-31'),
+        start: moment('2009-01-01'),
+        end: moment('2010-12-31'),
         parser: input => {
           return {
             localId: input.CD,
@@ -251,7 +262,11 @@ function congresses() {
           };
         },
         filter: feature => {
-          return feature.properties.CD;
+          return (
+            feature.properties.CD &&
+            feature.properties.CD.toLowerCase() !== 'zz' &&
+            feature.properties.CD.toLowerCase() !== '98'
+          );
         }
       }
     ],
@@ -260,8 +275,8 @@ function congresses() {
         url:
           'https://www2.census.gov/geo/tiger/PREVGENZ/cd/cd110shp/cd99_110_shp.zip',
         shapefile: 'cd99_110.shp',
-        start: moment('2006-01-01'),
-        end: moment('2007-12-31'),
+        start: moment('2007-01-01'),
+        end: moment('2008-12-31'),
         parser: input => {
           return {
             localId: input.CD,
@@ -272,7 +287,11 @@ function congresses() {
           };
         },
         filter: feature => {
-          return feature.properties.CD;
+          return (
+            feature.properties.CD &&
+            feature.properties.CD.toLowerCase() !== 'zz' &&
+            feature.properties.CD.toLowerCase() !== '98'
+          );
         }
       }
     ]
