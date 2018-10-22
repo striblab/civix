@@ -22,14 +22,14 @@ module.exports = async function coreDataElexRacesImporter({
   // Make sure election is given
   if (!argv.election) {
     throw new Error(
-      'An election argument must be provided, for example "--election="2018-11-06"'
+      'An election argument must be provided, for example: --election="2018-11-06"'
     );
   }
 
   // Make sure state is given
   if (!argv.state) {
     throw new Error(
-      'An state argument must be provided, for example "--state="mn'
+      'An state argument must be provided, for example: --state="mn"'
     );
   }
 

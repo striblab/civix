@@ -70,5 +70,7 @@ module.exports = {
   ftpPrintHost: process.env.PRINT_FTP_HOST,
   ftpPrintUser: process.env.PRINT_FTP_USER,
   ftpPrintPass: process.env.PRINT_FTP_PASS,
-  ftpPrintPutLocation: process.env.PRINT_FTP_PUT_LOCATION
+  ftpPrintPutLocation: process.env.PRINT_FTP_PUT_LOCATION,
+  mnSosFtpUser: process.env.MN_SOS_FTP_USER,
+  mnSosFtpPass: process.env.MN_SOS_FTP_PASS
 };
