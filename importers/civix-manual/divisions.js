@@ -191,6 +191,23 @@ module.exports = async function coreDataDivisionsImporter({
     });
   });
 
+  // Soil water children
+  [
+    {
+      id: 'soil-water-subdistrict',
+      name: 'soil-water-subdistrict',
+      title: 'Subdistrict',
+      sort: 'soil water subdistrict',
+      parent_id: 'soil-water',
+      sourceData: source
+    }
+  ].forEach(r => {
+    records.push({
+      model: models.Division,
+      record: r
+    });
+  });
+
   // Import records
   return await importRecords(records, {
     db,

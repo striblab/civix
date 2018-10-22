@@ -1,5 +1,5 @@
 /**
- * Minnesota state legislature: Soil and Water Conservation Districts
+ * Minnesota state legislature: Soil and Water Conservation Districts (subdistricts)
  *
  * From:
  * https://www.gis.leg.mn/html/download.html
@@ -29,7 +29,7 @@ module.exports = async function mnStateLegStateHouseImporter({
   let districtSet = districtSets()[argv.year];
   if (!districtSet) {
     throw new Error(
-      `Unable to find information about Soil and Water Conservation Districts set ${
+      `Unable to find information about Soil and Water Conservation Districts (subdistricts) set ${
         argv.year
       }`
     );
@@ -39,7 +39,9 @@ module.exports = async function mnStateLegStateHouseImporter({
   // Log
   logger(
     'info',
-    `MN State Leg: Soil and Water Conservation Districts ${argv.year} ...`
+    `MN State Leg: Soil and Water Conservation Districts (subdistricts) ${
+      argv.year
+    } ...`
   );
 
   // Get geo
@@ -59,14 +61,25 @@ module.exports = async function mnStateLegStateHouseImporter({
   for (let district of districts.features) {
     let p = district.properties;
     let parsed = districtSet.parser(p, districtSet);
-    let boundaryId = `usa-mn-soil-water-${parsed.localId.toLowerCase()}`;
+    let boundaryId = `usa-mn-soil-water-subdistrict-${parsed.localId.toLowerCase()}`;
     let boundaryVersionId = `${districtSet.start.year()}-${boundaryId}`;
 
     // Could have multiple county parents
     let countyIds = parsed.allCounties.map(c => `usa-county-27${c}`);
 
-    // State parent
-    let stateId = 'usa-state-mn';
+    // Get parent.  Parents use the lowest Id from the list of
+    // subdistricts, which makes it a bit hard to find.
+    let parentRecord = await models.Boundary.findOne({
+      where: {
+        division_id: 'soil-water',
+        short_title: parsed.parentTitle
+      }
+    });
+    if (!parentRecord) {
+      throw new Error(
+        `Unable to find Soil Water parent with name: ${parsed.parentTitle}`
+      );
+    }
 
     // Create general boundary if needed
     let boundary = {
@@ -78,7 +91,7 @@ module.exports = async function mnStateLegStateHouseImporter({
         shortTitle: parsed.shortTitle,
         sort: makeSort(parsed.title),
         localId: parsed.localId.toLowerCase(),
-        division_id: 'soil-water',
+        division_id: 'soil-water-subdistrict',
         sourceData: {
           'mn-state-leg': {
             about: 'See specific version for original data.',
@@ -88,7 +101,7 @@ module.exports = async function mnStateLegStateHouseImporter({
       },
       post: async (r, { transaction }) => {
         await r[0].addParents(
-          _.filter([].concat(countyIds).concat([stateId])),
+          _.filter([].concat(countyIds).concat([parentRecord.get('id')])),
           {
             transaction
           }
@@ -133,23 +146,26 @@ module.exports = async function mnStateLegStateHouseImporter({
 // Processing each set of districts
 function districtSets() {
   let defaultFilter = feature => {
-    return !!feature.properties.SWCDIST && !!feature.properties.SWCDIST_N;
+    return (
+      feature.properties.SWCDIST_N &&
+      feature.properties.SWCDIST_N.match(/\s+[0-9]+$/)
+    );
   };
   let defaultGrouping = feature => {
-    // Need to get rid of the subdistrict
-    return feature.properties.SWCDIST_N.replace(/\s+[0-9]+$/);
+    return feature.properties.SWCDIST;
   };
   let defaultParser = input => {
-    // Get title
-    let title = input.SWCDIST_N.replace(/\s+[0-9]+$/, '').trim();
+    // Get parent name
+    let parentTitle = input.SWCDIST_N.replace(/\s+[0-9]+$/, '').trim();
 
-    // Unfortunately, the IDs are by subdistrict, so we use the lowest
-    let lowId = _.min(_.map(input.fullGroup, d => parseInt(d.SWCDIST, 10)));
+    // Get subdistrict
+    let subdistrict = input.SWCDIST_N.match(/\s+([0-9]+)$/)[1];
 
     return {
-      localId: `27-${lowId.toString().padStart(4, '0')}`,
-      title: `${title} Soil and Water Conservation District`,
-      shortTitle: title,
+      localId: `27-${input.SWCDIST.toString().padStart(4, '0')}`,
+      title: `${parentTitle} Soil and Water Conservation District Subdistrict ${subdistrict}`,
+      shortTitle: `${parentTitle} Subdistrict ${subdistrict}`,
+      parentTitle,
       allCounties: _.uniq(
         input.fullGroup.map(p => {
           return p.COUNTYFIPS.toString().padStart(3, '0');
