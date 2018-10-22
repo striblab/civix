@@ -48,10 +48,17 @@ module.exports = async function mnElectionsMNContestsImporter({
   let records = [];
 
   // Go through files
-  _.each(files, file => {
-    _.each(file.contests, c => {
-      let parsed = contestParser(c, { type: file.type, election });
+  for (let file of files) {
+    for (let ci in file.contests) {
+      let c = file.contests[ci];
+
+      let parsed = await contestParser(c, {
+        type: file.type,
+        election,
+        models
+      });
+
       console.log(parsed);
-    });
-  });
+    }
+  }
 };
