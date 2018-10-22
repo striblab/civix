@@ -628,6 +628,14 @@ parsers.school = async (data, options) => {
     .replace(/\(elect\s+[0-9]+\)/i, '')
     .trim();
 
+  // South Sait Paul says its an ISD, when its really a SSD
+  // http://w20.education.state.mn.us/MdeOrgView/search/tagged/MDEORG_LEA
+  if (options.election.get('id') === 'usa-mn-20181106') {
+    if (contestName.match(/isd.*?[0-9]+/i) && contest.district === '0006') {
+      contestName = contestName.replace(/isd.*?([0-9]+)/i, 'SSD $1');
+    }
+  }
+
   // ISD or SSD
   let districtTypeMatch = contestName.match(/\((ssd|isd).*?([0-9]+)\)/i);
   let districtType = districtTypeMatch
@@ -908,33 +916,59 @@ parsers['county-commissioner'] = async (data, options) => {
 };
 
 // Soil and Water Conservation Districts (has up to 5 Supervisor seats)
+// and (some districts have subdistricts)
 parsers['soil-water'] = async (data, options) => {
   let contest = commonParser(data);
 
   // Get seat number
   let seat = contest.contestName.match(/district\s+([0-9]+)/i)[1];
 
-  // Get district name
-  let areaRecord = await options.models.Boundary.findOne({
-    where: { id: `usa-mn-soil-water-27-${contest.district.padStart(4, '0')}` }
-  });
-  let area = areaRecord ? areaRecord.get('shortTitle') : undefined;
-  if (!area) {
-    debug(
-      `Unable to find area for: usa-mn-soil-water-27-${contest.district.padStart(
+  // For some reasont the id numbers for Anoka county sub districts are
+  // off
+  if (options.election.get('id') === 'usa-mn-20181106') {
+    contest.district = contest.district === '4002' ? '4004' : contest.district;
+    contest.district = contest.district === '4003' ? '4005' : contest.district;
+  }
+
+  // Get district name.  There's no good way to know if this
+  // contest is a sub district race or just a seat.  Yay!
+  let subdistrictRecord = await options.models.Boundary.findOne({
+    where: {
+      id: `usa-mn-soil-water-subdistrict-27-${contest.district.padStart(
         4,
         '0'
       )}`
+    }
+  });
+  let soilRecord = await options.models.Boundary.findOne({
+    where: { id: `usa-mn-soil-water-27-${contest.district.padStart(4, '0')}` }
+  });
+  let subdistrict = !!subdistrictRecord;
+  let area = subdistrictRecord
+    ? subdistrictRecord.get('shortTitle')
+    : soilRecord
+      ? soilRecord.get('shortTitle')
+      : undefined;
+  if (!area) {
+    debug(
+      `Unable to find area for: usa-mn-soil-water-subdistrict-27-${contest.district.padStart(
+        4,
+        '0'
+      )} or usa-mn-soil-water-27-${contest.district.padStart(4, '0')}`
     );
   }
 
   // Ids
-  let bodyId = `usa-mn-soil-water-27-${contest.district.padStart(4, '0')}`;
+  let bodyId = `usa-mn-soil-water-${
+    subdistrict ? 'subdistrict-' : ''
+  }27-${contest.district.padStart(4, '0')}`;
   let officeId = `${bodyId}-${seat.padStart(2, '0')}`;
   let contestId = `${moment(options.election.get('date')).format(
     'YYYYMMDD'
   )}-${officeId}-${contest.contest}`;
-  let title = `${area} Soil and Water Conservation District Seat ${seat}`;
+  let title = `${area} Soil and Water Conservation District ${
+    subdistrict ? 'Subdistrict ' + seat : 'Seat ' + seat
+  }`;
   let shortTitle = `${area} Seat ${seat}`;
 
   return {
@@ -955,7 +989,9 @@ parsers['soil-water'] = async (data, options) => {
       area: area,
       subArea: undefined,
       seatName: seat,
-      boundary_id: `usa-mn-soil-water-27-${contest.district.padStart(4, '0')}`,
+      boundary_id: `usa-mn-soil-water-27-${
+        subdistrict ? 'subdistrict-' : ''
+      }${contest.district.padStart(4, '0')}`,
       body_id: bodyId
     },
 
@@ -1105,7 +1141,10 @@ parsers['hospital-district'] = async (data, options) => {
       shortTitle,
       sort: makeSort(title),
       area: area,
-      boundary_id: `usa-mn-hospital-district-27-${contest.district.padStart(4, '0')}`
+      boundary_id: `usa-mn-hospital-district-27-${contest.district.padStart(
+        4,
+        '0'
+      )}`
     },
 
     contest: {

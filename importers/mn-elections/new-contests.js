@@ -10,6 +10,17 @@ const { getFiles } = require('./lib/election-files.js');
 const contestParser = require('./lib/parse-contests.js');
 const debug = require('debug')('civix:importer:mn-contests');
 
+// AP level results
+const apLevelResults = [
+  'state',
+  'us-house',
+  'us-senate',
+  'state-lower',
+  'state-upper',
+  'judicial',
+  'judicial-district'
+];
+
 // Import function
 module.exports = async function mnElectionsMNContestsImporter({
   logger,
@@ -52,13 +63,62 @@ module.exports = async function mnElectionsMNContestsImporter({
     for (let ci in file.contests) {
       let c = file.contests[ci];
 
+      // Exclude AP
+      if (!argv.includeAp) {
+        if (~apLevelResults.indexOf(file.type)) {
+          continue;
+        }
+      }
+
+      // Run through parser
       let parsed = await contestParser(c, {
         type: file.type,
         election,
         models
       });
 
-      console.log(parsed);
+      // Put together records
+      if (parsed) {
+        if (parsed.body) {
+          records.push({
+            model: models.Body,
+            record: _.extend(parsed.body, {
+              sourceData: {
+                'mn-sos-ftp': {
+                  about: 'Taken from results level data',
+                  data: c
+                }
+              }
+            })
+          });
+        }
+        if (parsed.office) {
+          records.push({
+            model: models.Office,
+            record: _.extend(parsed.office, {
+              sourceData: {
+                'mn-sos-ftp': {
+                  about: 'Taken from results level data',
+                  data: c
+                }
+              }
+            })
+          });
+        }
+        if (parsed.contest) {
+          records.push({
+            model: models.Contest,
+            record: _.extend(parsed.contest, {
+              sourceData: {
+                'mn-sos-ftp': {
+                  about: 'Taken from results level data',
+                  data: c
+                }
+              }
+            })
+          });
+        }
+      }
     }
   }
 };
