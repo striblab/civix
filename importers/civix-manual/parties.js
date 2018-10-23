@@ -117,7 +117,7 @@ module.exports = async function coreDataPartiesImporter({
     ['THD', 'Theo-Democratic'],
     ['USP', 'U.S. People\'s Party'],
     ['UST', 'U.S. Taxpayers Party', 'UST'],
-    ['UNA', 'United Nationalist Alliance', 'UNA'],
+    ['UNA', 'United Nationalist Alliance'],
     ['UC', 'United Citizen', 'UCZ'],
     ['UNI', 'United Party', 'UNI'],
     ['UNK', 'Unknown', undefined, 'zzzm'],

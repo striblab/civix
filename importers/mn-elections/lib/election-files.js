@@ -87,6 +87,24 @@ async function getFile(election, file) {
   // Read contents
   let contents = fs.readFileSync(dl.output, 'utf-8');
 
+  // Wrapper around parseint and float to help with debugging
+  const pInt = input => {
+    if (!_.isNumber(input) && _.isNaN(parseInt(input, 10))) {
+      debug(`Unable to parse integer from: ${input}`);
+    }
+    else {
+      return parseInt(input, 10);
+    }
+  };
+  const pFloat = input => {
+    if (!_.isNumber(input) && _.isNaN(parseFloat(input))) {
+      debug(`Unable to parse float from: ${input}`);
+    }
+    else {
+      return parseFloat(input, 10);
+    }
+  };
+
   // Parse
   let parsed = semiSV.parseRows(contents, d => {
     return {
@@ -103,11 +121,11 @@ async function getFile(election, file) {
       // Not usually filled in
       incumbent: d[9],
       party: d[10],
-      precincts: d[11] ? parseInt(d[11], 10) : undefined,
-      totalPrecincts: d[12] ? parseInt(d[12], 10) : undefined,
-      votes: d[13] ? parseInt(d[13], 10) : undefined,
-      percent: d[14] ? parseFloat(d[14]) : undefined,
-      totalVotes: d[15] ? parseInt(d[15], 10) : undefined,
+      precincts: pInt(d[11]),
+      totalPrecincts: pInt(d[12]),
+      votes: pInt(d[13]),
+      percent: pFloat(d[14]),
+      totalVotes: pInt(d[15]),
       id: makeId(`${d[0]} ${d[1]} ${d[3]}-${d[5]}`)
     };
   });

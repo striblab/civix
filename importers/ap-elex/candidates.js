@@ -69,7 +69,10 @@ module.exports = async function coreDataElexRacesImporter({
       });
     }
     // No party
-    else if (candidate.party.toLowerCase() === 'np') {
+    else if (
+      candidate.party.toLowerCase() === 'una' ||
+      candidate.party.toLowerCase() === 'np'
+    ) {
       party = await models.Party.findOne({
         where: { id: 'np' }
       });
