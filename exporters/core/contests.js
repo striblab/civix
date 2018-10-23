@@ -20,7 +20,7 @@ module.exports = async ({ logger, config, models, db, argv }) => {
 
   // Make sure there is actually an election there
   let electionRecord = await models.Election.findOne({
-    where: { date: new Date(argv.election) }
+    where: { date: argv.election }
   });
   if (!electionRecord) {
     throw new Error(
@@ -41,7 +41,6 @@ module.exports = async ({ logger, config, models, db, argv }) => {
     logger('error', `Unable to create path: ${electionContestsPath}`);
     throw e;
   }
-  console.log(electionContestsPath);
 
   // Make query
   let contests = await models.Contest.findAll({
@@ -140,7 +139,7 @@ module.exports = async ({ logger, config, models, db, argv }) => {
   let byBodyPath = path.join(electionContestsPath, 'by-body');
   fs.mkdirpSync(byBodyPath);
   _.each(
-    _.groupBy(topResults, c => {
+    _.groupBy(_.filter(topResults, c => c.office && c.office.body_id), c => {
       return c.office.body_id;
     }),
     (g, gi) => {
@@ -202,12 +201,15 @@ module.exports = async ({ logger, config, models, db, argv }) => {
       gi && gi !== 'null'
         ? _.cloneDeep(g[0].office)
         : { id: 'no-contest', noContest: true };
-    office.contests = g;
 
-    fs.writeFileSync(
-      path.join(byOfficePath, `${office.id}.json`),
-      JSON.stringify(office)
-    );
+    if (office) {
+      office.contests = g;
+
+      fs.writeFileSync(
+        path.join(byOfficePath, `${office.id}.json`),
+        JSON.stringify(office)
+      );
+    }
   });
 };
 
