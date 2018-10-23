@@ -97,7 +97,7 @@ module.exports = async function mnElectionsMNContestsImporter({
           localId: `${result.id}-${result.candidate}`,
           units: undefined,
           votes: result.votes,
-          percent: result.percent,
+          percent: result.percent ? result.percent / 100 : result.percent,
           winner: undefined,
           incumbent: undefined,
           test: config.testResults,
