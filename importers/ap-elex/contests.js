@@ -45,7 +45,12 @@ module.exports = async function coreDataElexRacesImporter({
     }
   });
   if (!election) {
-    throw new Error(`Unable to find election: ${argv.state}-${argv.election}`);
+    throw new Error(
+      `Unable to find election: usa-${argv.state}-${argv.election.replace(
+        /-/g,
+        ''
+      )}`
+    );
   }
 
   // Filter contests to just the top level

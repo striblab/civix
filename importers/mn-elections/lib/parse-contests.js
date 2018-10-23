@@ -547,6 +547,15 @@ parsers.local = (data, options) => {
     };
   }
 
+  // Discrepency.  Hiblings uses letter for wards, but SoS results use
+  // numbers
+  // http://www.hibbing.mn.us/city-administration/elected-officials
+  if (options.election.get('id') === 'usa-mn-20181106') {
+    if (contest.district === '28790' && ward) {
+      ward = { '1': 'A', '2': 'B', '3': 'C', '4': 'D', '5': 'E' }[ward];
+    }
+  }
+
   // Parts
   let wardId =
     ward && ward.match(/[0-9]/)
@@ -586,7 +595,7 @@ parsers.local = (data, options) => {
       seatName: seat,
       boundary_id: ward
         ? `usa-mn-local-ward-27${mcdId}-${wardId}`
-        : `usa-mn-local-27${mcdId}`,
+        : `usa-mn-county-local-27${mcdId}`,
       body_id: records.body ? records.body.id : undefined
     };
   }
@@ -747,7 +756,7 @@ parsers.school = async (data, options) => {
     totalPrecincts: contest.totalPrecincts,
     subContest: false,
     election_id: options.election.get('id'),
-    office_id: officeId
+    office_id: !contest.question ? officeId : undefined
   };
 
   return records;
@@ -989,9 +998,9 @@ parsers['soil-water'] = async (data, options) => {
       area: area,
       subArea: undefined,
       seatName: seat,
-      boundary_id: `usa-mn-soil-water-27-${
+      boundary_id: `usa-mn-soil-water-${
         subdistrict ? 'subdistrict-' : ''
-      }${contest.district.padStart(4, '0')}`,
+      }27-${contest.district.padStart(4, '0')}`,
       body_id: bodyId
     },
 

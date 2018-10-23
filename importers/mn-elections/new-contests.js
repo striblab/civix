@@ -55,6 +55,13 @@ module.exports = async function mnElectionsMNContestsImporter({
   // Get files
   let files = await getFiles(election.get('date'));
 
+  // Get list of boundary id to check against
+  let boundaryIds = await models.Boundary.findAll({
+    attributes: ['id'],
+    raw: true
+  });
+  boundaryIds = _.map(boundaryIds, 'id');
+
   // Records
   let records = [];
 
@@ -93,6 +100,14 @@ module.exports = async function mnElectionsMNContestsImporter({
           });
         }
         if (parsed.office) {
+          // Check boundary Id
+          if (parsed.office.boundary_id) {
+            if (boundaryIds.indexOf(parsed.office.boundary_id) === -1) {
+              debug(`Unable to find boundary ID: ${parsed.office.boundary_id}`);
+              parsed.office.boundary_id = undefined;
+            }
+          }
+
           records.push({
             model: models.Office,
             record: _.extend(parsed.office, {
@@ -121,4 +136,11 @@ module.exports = async function mnElectionsMNContestsImporter({
       }
     }
   }
+
+  // Save records
+  return await importRecords(records, {
+    db,
+    logger,
+    options: argv
+  });
 };

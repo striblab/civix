@@ -52,7 +52,9 @@ module.exports = db => {
     // Tied to a boundary
     this.__associations.push(
       this.belongsTo(Boundary, {
-        foreignKey: { allowNull: false }
+        // Ideally, this would always be not null, but
+        // that's not how data is.
+        foreignKey: { allowNull: true }
       })
     );
 
