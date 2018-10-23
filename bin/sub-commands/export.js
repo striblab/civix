@@ -46,20 +46,20 @@ exports.handler = async argv => {
   // Check for exists
   if (!fs.existsSync(exporter)) {
     logger.p('error', `Unable to find exporter at ${exporter}`);
-    return;
+    process.exit(1);
   }
 
   // Check for output
   if (!argv.output) {
     logger.p('error', 'Output should be defined or left as default.');
-    return;
+    process.exit(1);
   }
   try {
     fs.mkdirpSync(argv.output);
   }
   catch (e) {
     logger.p('error', `Unable to create output path ${argv.output}`);
-    return;
+    process.exit(1);
   }
 
   // Try to require
@@ -72,6 +72,7 @@ exports.handler = async argv => {
       'error',
       `Unable to require ${exporter}: ${config.debug ? e.stack : ''}`
     );
+    process.exit(1);
   }
 
   // Setup
@@ -85,6 +86,7 @@ exports.handler = async argv => {
       'error',
       `Issue with syncing to database: ${e}: ${config.debug ? e.stack : ''}`
     );
+    process.exit(1);
   }
 
   // Run importer
@@ -102,6 +104,7 @@ exports.handler = async argv => {
       'error',
       `Importer ran into error: ${e}: ${config.debug ? e.stack : ''}`
     );
+    process.exit(1);
   }
 
   await db.close();

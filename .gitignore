@@ -1,6 +1,7 @@
 .logs
 .cache
 civix-exports
+.elex
 
 # Common
 .vscode
