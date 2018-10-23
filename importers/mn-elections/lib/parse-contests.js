@@ -9,7 +9,7 @@ const { makeId, makeSort } = require('../../../lib/strings.js');
 const debug = require('debug')('civix:importer:mn-elections:parse-contests');
 
 // Main parser
-async function parser(contestData = {}, options = {}) {
+async function contestParser(contestData = {}, options = {}) {
   let validTypes = [
     'state',
     'local',
@@ -1279,4 +1279,8 @@ function mnCountyToFips(code) {
 }
 
 // Exports
-module.exports = parser;
+module.exports = {
+  commonParser,
+  contestParser,
+  mnCountyToFips
+};
