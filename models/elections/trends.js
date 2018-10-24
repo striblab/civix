@@ -3,6 +3,7 @@
  *
  * Describes a trend such as a balance of power in a body,
  * modeled after the AP trends data.
+ * http://customersupport.ap.org/doc/AP_Elections_API_Developer_Guide.pdf
  */
 
 // Dependencies
@@ -19,35 +20,47 @@ module.exports = db => {
           utils.extendWithNames({
             won: {
               type: Sequelize.INTEGER(),
-              description: 'Number of winners.'
+              description:
+                'The number of seats for each party that have been declared winners in the current election.'
             },
             leading: {
               type: Sequelize.INTEGER(),
-              description: 'Leading.'
+              description:
+                'The number of seats for each party that are currently leading but have not been declared winners.'
             },
             holdovers: {
               type: Sequelize.INTEGER(),
-              description: 'Holdovers.'
+              description:
+                'The number of Governor seats for each party that are not up for election in the current election.'
             },
             winningTrend: {
               type: Sequelize.INTEGER(),
-              description: 'Winning trend number.'
+              description: 'Party breakdown if present trend continues.'
             },
             current: {
               type: Sequelize.INTEGER(),
-              description: 'Current.'
+              description:
+                'The total number of seats for the office for each party, before the current election.'
             },
             insufficientVote: {
               type: Sequelize.INTEGER(),
-              description: 'Insufficent votes.'
+              description:
+                'The number of seats for each party where the race is ignored in trend calculations. Races with fewer than 5% of precincts reporting, with less than 5% of registered voters having voted so far, and with no declared winner are considered to have insufficient votes. Uncalled, uncontested races are included as part of the Insufficient Vote.'
             },
             netWinners: {
               type: Sequelize.INTEGER(),
-              description: 'Net winners.'
+              description:
+                'The number of seats that each party has won or lost in races where a winner has been declared.  Any races where a winner has not been declared are ignored in this calculation.'
             },
             netLeaders: {
               type: Sequelize.INTEGER(),
-              description: 'Net leaders.'
+              description:
+                'The number of seats that each party would win or lose in races where the winner has not been declared.  Races with insufficient votes are not included in Net Change Leaders.  Net Change Winners and Net Change Leaders may be added together to get net change trends, assuming that the leaders will become winners.'
+            },
+            test: {
+              type: Sequelize.BOOLEAN(),
+              description: 'Whether is test data.',
+              defaultValue: false
             }
           })
         )
@@ -64,7 +77,8 @@ module.exports = db => {
           { fields: ['current'] },
           { fields: ['insufficientVote'] },
           { fields: ['netWinners'] },
-          { fields: ['netLeaders'] }
+          { fields: ['netLeaders'] },
+          { fields: ['test'] }
         ])
       )
     }

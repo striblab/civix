@@ -123,6 +123,7 @@ module.exports = async function coreDataPartiesImporter({
     ['UNK', 'Unknown', undefined, 'zzzm'],
     ['VET', 'Veterans Party'],
     ['WTP', 'We the People'],
+    ['OTH', 'Other parties', undefined, 'zaaa'],
     ['WI', 'Write-in', undefined, 'zzzz']
   ];
 
