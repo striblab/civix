@@ -7,7 +7,6 @@
  */
 
 // Dependencies
-const _ = require('lodash');
 const Sequelize = require('sequelize');
 const utils = require('../model-utils.js');
 
