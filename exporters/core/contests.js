@@ -6,11 +6,12 @@
 const _ = require('lodash');
 const fs = require('fs-extra');
 const path = require('path');
+const { pruneEmpty, filterValues } = require('../../lib/collections.js');
 const moment = require('moment-timezone');
 moment.tz.setDefault('America/New_York');
 
 // Export function
-module.exports = async ({ logger, config, models, db, argv }) => {
+module.exports = async ({ logger, models, argv }) => {
   // Get election
   if (!argv.election) {
     throw new Error(
@@ -212,37 +213,3 @@ module.exports = async ({ logger, config, models, db, argv }) => {
     }
   });
 };
-
-// Filter object and keep keys
-function filterValues(object, filter) {
-  filter = filter || identity;
-  return Object.keys(object).reduce(function(x, key) {
-    var value = object[key];
-    if (filter(value)) {
-      x[key] = value;
-    }
-    return x;
-  }, {});
-}
-
-// REcursive clean
-function pruneEmpty(obj) {
-  return (function prune(current) {
-    _.forOwn(current, function(value, key) {
-      if (
-        _.isUndefined(value) ||
-        _.isNull(value) ||
-        _.isNaN(value) ||
-        (!_.isDate(value) && _.isString(value) && _.isEmpty(value)) ||
-        (!_.isDate(value) && _.isObject(value) && _.isEmpty(prune(value)))
-      ) {
-        delete current[key];
-      }
-    });
-    // remove any leftover undefined values from the delete
-    // operation on an array
-    if (_.isArray(current)) _.pull(current, undefined);
-
-    return current;
-  })(_.cloneDeep(obj)); // Do not modify the original object, create a clone instead
-}
