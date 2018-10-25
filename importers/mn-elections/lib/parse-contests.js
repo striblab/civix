@@ -762,43 +762,30 @@ parsers.school = async (data, options) => {
   return records;
 };
 
-// County Comissioner (sub-districts of counties)
-parsers['county-commissioner'] = async (data, options) => {
+// State, specifically three rivers park districts
+// County Park Commissioner District 2
+parsers['park-district'] = async (data, options) => {
   let contest = commonParser(data);
 
   // Get district number
   let district = contest.contestName.match(/district\s+([0-9]+)/i)[1];
 
-  // Get county FIPs
-  let countyFips = mnCountyToFips(contest.county);
-
-  // Get county name
-  let areaRecord = await options.models.Boundary.findOne({
-    where: { id: `usa-county-27${countyFips.padStart(3, '0')}` }
-  });
-  let area = areaRecord ? areaRecord.get('shortTitle') : undefined;
-  if (!area) {
-    debug(
-      `Unable to find area for: usa-county-27${countyFips.padStart(3, '0')}`
-    );
-  }
-
   // Ids
-  let bodyId = `usa-mn-county-27${countyFips.padStart(3, '0')}`;
-  let officeId = `${bodyId}-${district.padStart(2, '0')}-county-commissioner`;
+  let bodyId = 'usa-mn-park-district';
+  let officeId = `${bodyId}-27${district.padStart(2, '0')}`;
   let contestId = `${moment(options.election.get('date')).format(
     'YYYYMMDD'
   )}-${officeId}-${contest.contest}`;
-  let title = `${area} County Commissioner District ${district}`;
+  let title = `Three Rivers Park District ${district}`;
   let shortTitle = `District ${district}`;
 
   return {
     body: {
       id: bodyId,
       name: bodyId,
-      title: `${area} County Commissioners`,
-      shortTitle: 'County Commissioners',
-      sort: makeSort(`${area} County Commissioners`)
+      title: 'Three Rivers Park Districts',
+      shortTitle: 'Park Districts',
+      sort: makeSort('Three Rivers Park Districts')
     },
 
     office: {
@@ -807,10 +794,10 @@ parsers['county-commissioner'] = async (data, options) => {
       title,
       shortTitle,
       sort: makeSort(title),
-      area: area,
-      subArea: `District ${district}`,
+      area: `District ${district}`,
+      subArea: undefined,
       seatName: undefined,
-      boundary_id: `usa-mn-county-commissioner-27${countyFips}-${district
+      boundary_id: `usa-mn-park-district-27${district
         .toLowerCase()
         .padStart(2, '0')}`,
       body_id: bodyId
@@ -1038,6 +1025,9 @@ parsers.county = async (data, options) => {
   // County results, actually include Soil and Water and County Commissioner
   if (contest.contestName.match(/soil.*water.*supervisor/i)) {
     return await parsers['soil-water'](data, options);
+  }
+  else if (contest.contestName.match(/county.*park/i)) {
+    return await parsers['park-district'](data, options);
   }
   else if (contest.contestName.match(/county.*commissioner/i)) {
     return await parsers['county-commissioner'](data, options);
