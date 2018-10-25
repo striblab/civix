@@ -110,8 +110,8 @@ module.exports = async ({ logger, models, argv }) => {
   let topResults = _.map(simpleContests, c => _.omit(c, 'subResults'));
 
   // Output all
-  let allPath = path.join(electionContestsPath, 'all.json');
-  fs.writeFileSync(allPath, JSON.stringify(topResults));
+  // let allPath = path.join(electionContestsPath, 'all.json');
+  // fs.writeFileSync(allPath, JSON.stringify(topResults));
 
   // Each contest
   let byContestPath = path.join(electionContestsPath, 'contests');

@@ -70,8 +70,8 @@ module.exports = async ({ logger, models, argv }) => {
   });
 
   // Output all
-  let allPath = path.join(electionTrendsPath, 'all.json');
-  fs.writeFileSync(allPath, JSON.stringify(simpleTrends));
+  // let allPath = path.join(electionTrendsPath, 'all.json');
+  // fs.writeFileSync(allPath, JSON.stringify(simpleTrends));
 
   // Group by body
   let byBodyPath = path.join(electionTrendsPath, 'by-body');
