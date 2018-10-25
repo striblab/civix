@@ -27,8 +27,6 @@ module.exports = async function mnElectionsMNContestsImporter({
   argv,
   config
 }) {
-  logger('info', 'MN SoS Results importer...');
-
   // Make sure election is given
   if (!argv.election) {
     throw new Error(
@@ -38,7 +36,7 @@ module.exports = async function mnElectionsMNContestsImporter({
 
   // By default, ignore AP
   if (argv.includeAp) {
-    logger('info', 'Including AP level contests.');
+    logger.info('Including AP level contests.');
   }
 
   // Get election

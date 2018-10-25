@@ -22,8 +22,6 @@ module.exports = async function coreDataDivisionsImporter({
   db,
   argv
 }) {
-  logger('info', 'Core data: Divisions importer...');
-
   // Records to save
   let records = [];
 

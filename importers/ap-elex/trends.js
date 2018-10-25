@@ -15,8 +15,6 @@ module.exports = async function coreDataElexRacesImporter({
   config,
   argv
 }) {
-  logger('info', 'AP (via Elex) Results importer...');
-
   // Make sure election is given
   if (!argv.election) {
     throw new Error(
@@ -50,7 +48,13 @@ module.exports = async function coreDataElexRacesImporter({
   // Manually do senate and house
   for (let trendType of ['senate', 'house']) {
     // Get elex trend data
-    let trends = await elex.trends({ type: trendType });
+    let { data: trends, cached } = await elex.trends({ type: trendType });
+
+    // If cached, then there's no reason to do anything
+    if (cached && !argv.ignoreCache) {
+      logger.info(`Trend cached for "${trendType}", no need to do anything.`);
+      continue;
+    }
 
     // Go through trends
     for (let trend of trends) {

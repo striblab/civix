@@ -29,8 +29,6 @@ module.exports = async function coreDataPartiesImporter({
   db,
   argv
 }) {
-  logger('info', 'Core data: Party importer...');
-
   // Inspired by https://www.fec.gov/campaign-finance-data/party-code-descriptions/
   // And http://customersupport.ap.org/doc/AP_Elections_API_Developer_Guide.pdf
   let parties = [

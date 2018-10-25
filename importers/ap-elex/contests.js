@@ -17,8 +17,6 @@ module.exports = async function coreDataElexRacesImporter({
   db,
   argv
 }) {
-  logger('info', 'AP (via Elex) Races importer...');
-
   // Make sure election is given
   if (!argv.election) {
     throw new Error(
@@ -36,7 +34,13 @@ module.exports = async function coreDataElexRacesImporter({
   // Get elex races.  We use the results to set things up, since
   // it has more details and sub-contests
   const elex = new Elex({ logger, defaultElection: argv.election });
-  const results = await elex.results();
+  let { data: results, cached } = await elex.results();
+
+  // If cached, then there's no reason to do anything
+  if (cached && !argv.ignoreCache) {
+    logger.info('Elex results was cached, no need to do anything.');
+    return;
+  }
 
   // Get election
   let election = await models.Election.findOne({

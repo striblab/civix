@@ -31,9 +31,6 @@ module.exports = async function tigerCountiesImporter({
   }
   countySet.year = argv.year;
 
-  // Log
-  logger('info', `Census TIGER: County set ${argv.year} ...`);
-
   // Collect records to save
   let records = [];
 

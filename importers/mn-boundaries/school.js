@@ -28,9 +28,6 @@ module.exports = async function mnBoundaries({ logger, models, db, argv }) {
   }
   districtSet.year = argv.year;
 
-  // Log
-  logger('info', `MN Geo Commons: School Districts ${argv.year} ...`);
-
   // Get geo
   let districts = await processGeo({
     url: districtSet.url,

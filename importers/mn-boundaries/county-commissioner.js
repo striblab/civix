@@ -33,9 +33,6 @@ module.exports = async function mnStateLegStateHouseImporter({
   }
   districtSet.year = argv.year;
 
-  // Log
-  logger('info', `MN State Leg: County Commissioner ${argv.year} ...`);
-
   // Get geo
   let districts = await processGeo({
     url: districtSet.url,

@@ -18,12 +18,6 @@ module.exports = async function coreDataTigerStatesImporter({
   db,
   argv
 }) {
-  logger('info', 'Natural Earth: Countries ...');
-  logger(
-    'info',
-    'Downloading shapefile, can take a moment if not already cached ...'
-  );
-
   // Get districts from download
   let countries = await processGeo({
     url:

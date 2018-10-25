@@ -15,12 +15,6 @@ module.exports = async function tigerStatesImporter({
   db,
   argv
 }) {
-  logger('info', 'Census TIGER: States importer ...');
-  logger(
-    'info',
-    'Downloading shapefile, can take a moment if not already cached ...'
-  );
-
   // Collect records to save
   let records = [];
 

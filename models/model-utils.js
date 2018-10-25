@@ -86,7 +86,7 @@ function extendWithNotes(fields = {}) {
 }
 
 // Extend with source
-function extendWithSources(model, Source) {
+function extendWithSources(model) {
   // !!! Can;t seem to get m-m include/associations to work
   // with findOrCreate so, giving up on this for
   // now.

@@ -36,12 +36,6 @@ module.exports = async function mnStateLegStateHouseImporter({
   }
   districtSet.year = argv.year;
 
-  // Log
-  logger(
-    'info',
-    `MN State Leg: Soil and Water Conservation Districts ${argv.year} ...`
-  );
-
   // Get geo
   let districts = await processGeo({
     url: districtSet.url,

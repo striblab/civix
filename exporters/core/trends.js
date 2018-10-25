@@ -6,7 +6,7 @@
 const _ = require('lodash');
 const fs = require('fs-extra');
 const path = require('path');
-const { pruneEmpty, filterValues } = require('../../lib/collections.js');
+const { pruneEmpty } = require('../../lib/collections.js');
 const moment = require('moment-timezone');
 moment.tz.setDefault('America/New_York');
 
@@ -39,7 +39,7 @@ module.exports = async ({ logger, models, argv }) => {
     fs.mkdirpSync(electionTrendsPath);
   }
   catch (e) {
-    logger('error', `Unable to create path: ${electionTrendsPath}`);
+    logger.error(`Unable to create path: ${electionTrendsPath}`);
     throw e;
   }
 
@@ -79,7 +79,7 @@ module.exports = async ({ logger, models, argv }) => {
     fs.mkdirpSync(byBodyPath);
   }
   catch (e) {
-    logger('error', `Unable to create path: ${byBodyPath}`);
+    logger.error(`Unable to create path: ${byBodyPath}`);
     throw e;
   }
 

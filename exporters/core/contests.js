@@ -39,7 +39,7 @@ module.exports = async ({ logger, models, argv }) => {
     fs.mkdirpSync(electionContestsPath);
   }
   catch (e) {
-    logger('error', `Unable to create path: ${electionContestsPath}`);
+    logger.error(`Unable to create path: ${electionContestsPath}`);
     throw e;
   }
 

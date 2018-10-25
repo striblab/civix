@@ -15,8 +15,6 @@ module.exports = async function mnElectionsMNContestsImporter({
   db,
   argv
 }) {
-  logger('info', 'MN Elections API: Elections...');
-
   // Get elex candidates (via results)
   const mnElections = new MNElections({
     logger
