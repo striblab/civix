@@ -84,6 +84,12 @@ async function getFile(election, file) {
     }@ftp.sos.state.mn.us/${election.replace(/-/g, '')}/${file.file}`
   });
 
+  // No change
+  if (dl && dl.fileChanged === false) {
+    debug(`File unchanged: ${file.file}`);
+    return [];
+  }
+
   // Read contents
   let contents = fs.readFileSync(dl.output, 'utf-8');
 

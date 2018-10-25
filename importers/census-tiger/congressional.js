@@ -33,9 +33,6 @@ module.exports = async function tigerStatesImporter({
   }
   congressSet.congress = argv.congress;
 
-  // Log
-  logger('info', `Census TIGER: Congressional districts ${argv.congress} ...`);
-
   // Collect records to save
   let records = [];
 
