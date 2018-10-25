@@ -6,6 +6,7 @@
 const path = require('path');
 const fs = require('fs-extra');
 const config = require('../../config');
+const { randomId } = require('../../lib/strings.js');
 
 // Describe command use
 exports.command = 'export <exporter> [output]';
@@ -34,6 +35,8 @@ exports.builder = yargs => {
 
 // Import
 exports.handler = async argv => {
+  let processId = randomId();
+
   // Check for path
   let exporter = argv.exporter.match(/\.js$/i)
     ? argv.exporter
@@ -41,25 +44,29 @@ exports.handler = async argv => {
 
   // Logger
   const logger = require('../../lib/logger.js');
-  logger.p = logger.makePrefixFn(`civix ${process.argv.splice(2).join(' ')}`);
+  let prefixedLogger = logger.makePrefixFn(processId);
+  prefixedLogger.info(`STARTED: civix ${process.argv.splice(2).join(' ')}`);
 
   // Check for exists
   if (!fs.existsSync(exporter)) {
-    logger.p('error', `Unable to find exporter at ${exporter}`);
-    process.exit(1);
+    logger.handleError(
+      new Error(`Unable to find exporter at ${exporter}`),
+      prefixedLogger
+    );
   }
 
   // Check for output
   if (!argv.output) {
-    logger.p('error', 'Output should be defined or left as default.');
-    process.exit(1);
+    logger.handleError(
+      new Error('Output should be defined or left as default.'),
+      prefixedLogger
+    );
   }
   try {
     fs.mkdirpSync(argv.output);
   }
   catch (e) {
-    logger.p('error', `Unable to create output path ${argv.output}`);
-    process.exit(1);
+    logger.handleError(e, prefixedLogger);
   }
 
   // Try to require
@@ -68,11 +75,7 @@ exports.handler = async argv => {
     exporterFunc = require(exporter);
   }
   catch (e) {
-    logger.p(
-      'error',
-      `Unable to require ${exporter}: ${config.debug ? e.stack : ''}`
-    );
-    process.exit(1);
+    logger.handleError(e, prefixedLogger, `Unable to require ${exporter}`);
   }
 
   // Setup
@@ -82,11 +85,7 @@ exports.handler = async argv => {
     await db.sync();
   }
   catch (e) {
-    logger.p(
-      'error',
-      `Issue with syncing to database: ${e}: ${config.debug ? e.stack : ''}`
-    );
-    process.exit(1);
+    logger.handleError(e, prefixedLogger, 'Issue with syncing to database');
   }
 
   // Run importer
@@ -100,12 +99,9 @@ exports.handler = async argv => {
     });
   }
   catch (e) {
-    logger.p(
-      'error',
-      `Importer ran into error: ${e}: ${config.debug ? e.stack : ''}`
-    );
-    process.exit(1);
+    logger.handleError(e, prefixedLogger, 'Importer ran into error');
   }
 
   await db.close();
+  prefixedLogger.info('ENDED');
 };

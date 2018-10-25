@@ -3,12 +3,10 @@
  */
 
 // Dependencies
-const path = require('path');
 const fs = require('fs-extra');
 const config = require('../../config');
-const logger = require('../../lib/logger.js');
 const publisher = require('../../lib/publish.js');
-const debug = require('debug')('civix:bin:publish');
+const { randomId } = require('../../lib/strings.js');
 
 // Describe command use
 exports.command = 'publish <s3-path> [region] [export-path]';
@@ -43,16 +41,27 @@ exports.builder = yargs => {
 
 // Import
 exports.handler = async argv => {
+  const logger = require('../../lib/logger.js');
+  let processId = randomId();
+
+  // Logger
+  let prefixedLogger = logger.makePrefixFn(processId);
+  prefixedLogger.info(`STARTED: civix ${process.argv.splice(2).join(' ')}`);
+
   // Check for export path
   if (!argv.exportPath) {
-    logger.error('`export-path` should be defined or left as default.');
-    process.exit(1);
+    logger.handleError(
+      new Error('"export-path" should be defined or left as default.'),
+      prefixedLogger
+    );
   }
 
   // Check it exists
   if (!fs.existsSync(argv.exportPath)) {
-    logger.error(`Unable to to find export path: ${argv.exportPath}`);
-    process.exit(1);
+    logger.handleError(
+      new Error(`Unable to to find export path: ${argv.exportPath}`),
+      prefixedLogger
+    );
   }
 
   // Publish
@@ -64,10 +73,12 @@ exports.handler = async argv => {
     });
   }
   catch (e) {
-    debug(e);
-    logger.error(
+    logger.handleError(
+      exports,
+      prefixedLogger,
       'Error trying to publish to S3.  Set DEBUG=civix:* environment variable to get more information.'
     );
-    process.exit(1);
   }
+
+  prefixedLogger.info('ENDED');
 };

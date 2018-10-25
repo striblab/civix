@@ -3,6 +3,7 @@
  */
 
 // Dependencies
+const { randomId } = require('../../lib/strings.js');
 
 // Describe command use
 exports.command = 'print <election-id>';
@@ -29,7 +30,20 @@ exports.builder = yargs => {
 exports.handler = async argv => {
   const db = require('../../lib/db.js');
   const print = require('../../lib/print.js');
+  const logger = require('../../lib/logger.js');
+  let processId = randomId();
 
-  await print(argv);
-  await db.close();
+  // Logger
+  let prefixedLogger = logger.makePrefixFn(processId);
+  prefixedLogger.info(`STARTED: civix ${process.argv.splice(2).join(' ')}`);
+
+  try {
+    await print(argv);
+    await db.close();
+  }
+  catch (e) {
+    logger.handleError(e, prefixedLogger);
+  }
+
+  prefixedLogger.info('ENDED');
 };

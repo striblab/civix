@@ -4,6 +4,7 @@
 
 // Dependencies
 const inquirer = require('inquirer');
+const { randomId } = require('../../lib/strings.js');
 
 // Describe command use
 exports.command = 'migrate [migration]';
@@ -30,6 +31,11 @@ exports.builder = yargs => {
 exports.handler = async argv => {
   const db = require('../../lib/db.js');
   const logger = require('../../lib/logger.js');
+  let processId = randomId();
+
+  // Logger
+  let prefixedLogger = logger.makePrefixFn(processId);
+  prefixedLogger.info(`STARTED: civix ${process.argv.splice(2).join(' ')}`);
 
   // Confirm drop
   if (argv.dropTables) {
@@ -47,7 +53,12 @@ exports.handler = async argv => {
     }
   }
 
-  logger.info('Syncing models...');
-  await db.sync({ force: argv.dropTables });
-  await db.close();
+  try {
+    await db.sync({ force: argv.dropTables });
+    await db.close();
+  }
+  catch (e) {
+    logger.handleError(e, prefixedLogger);
+  }
+  prefixedLogger.info('ENDED');
 };

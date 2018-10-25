@@ -16,8 +16,6 @@ module.exports = async function coreDataElexRacesImporter({
   config,
   argv
 }) {
-  logger('info', 'AP (via Elex) Results importer...');
-
   // Make sure election is given
   if (!argv.election) {
     throw new Error(
@@ -32,14 +30,6 @@ module.exports = async function coreDataElexRacesImporter({
     );
   }
 
-  // Get elex races.  We use the results to set things up, since
-  // it has more details and sub-contests
-  const elex = new Elex({ logger, defaultElection: argv.election });
-  let results = await elex.results();
-
-  // Records for db
-  let records = [];
-
   // Get election
   let election = await models.Election.findOne({
     where: {
@@ -49,6 +39,20 @@ module.exports = async function coreDataElexRacesImporter({
   if (!election) {
     throw new Error(`Unable to find election: ${argv.state}-${argv.election}`);
   }
+
+  // Get elex races.  We use the results to set things up, since
+  // it has more details and sub-contests
+  const elex = new Elex({ logger, defaultElection: argv.election });
+  let { data: results, cached } = await elex.results();
+
+  // If cached, then there's no reason to do anything
+  if (cached && !argv.ignoreCache) {
+    logger.info('Elex results was cached, no need to do anything.');
+    return;
+  }
+
+  // Records for db
+  let records = [];
 
   // Filter results to just the top level
   results = _.filter(results, r => {

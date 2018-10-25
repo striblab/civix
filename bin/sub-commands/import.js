@@ -6,6 +6,7 @@
 const path = require('path');
 const fs = require('fs');
 const config = require('../../config');
+const { randomId } = require('../../lib/strings.js');
 
 // Describe command use
 exports.command = 'import <importer>';
@@ -32,6 +33,8 @@ exports.builder = yargs => {
 
 // Import
 exports.handler = async argv => {
+  let processId = randomId();
+
   // Check for path
   let importer = argv.importer.match(/\.js$/i)
     ? argv.importer
@@ -39,12 +42,15 @@ exports.handler = async argv => {
 
   // Logger
   const logger = require('../../lib/logger.js');
-  logger.p = logger.makePrefixFn(`civix ${process.argv.splice(2).join(' ')}`);
+  let prefixedLogger = logger.makePrefixFn(processId);
+  prefixedLogger.info(`STARTED: civix ${process.argv.splice(2).join(' ')}`);
 
   // Check for exists
   if (!fs.existsSync(importer)) {
-    logger.p('error', `Unable to find importer at ${importer}`);
-    process.exit(1);
+    logger.handleError(
+      new Error(`Unable to find importer at ${importer}`),
+      prefixedLogger
+    );
   }
 
   // Try to require
@@ -53,11 +59,7 @@ exports.handler = async argv => {
     importerFunc = require(importer);
   }
   catch (e) {
-    logger.p(
-      'error',
-      `Unable to require ${importer}: ${config.debug ? e.stack : ''}`
-    );
-    process.exit(1);
+    logger.handleError(e, prefixedLogger);
   }
 
   // Setup
@@ -67,17 +69,13 @@ exports.handler = async argv => {
     await db.sync();
   }
   catch (e) {
-    logger.p(
-      'error',
-      `Issue with syncing to database: ${e}: ${config.debug ? e.stack : ''}`
-    );
-    process.exit(1);
+    logger.handleError(e, prefixedLogger, 'Issue with syncing to database');
   }
 
   // Run importer
   try {
     await importerFunc({
-      logger: logger.p,
+      logger: prefixedLogger,
       config,
       models: db.models,
       db: db,
@@ -85,12 +83,9 @@ exports.handler = async argv => {
     });
   }
   catch (e) {
-    logger.p(
-      'error',
-      `Importer ran into error: ${e}: ${config.debug ? e.stack : ''}`
-    );
-    process.exit(1);
+    logger.handleError(e, prefixedLogger, 'Importer ran into error');
   }
 
   await db.close();
+  prefixedLogger.info('ENDED');
 };
