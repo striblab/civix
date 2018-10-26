@@ -16,6 +16,9 @@ module.exports = async function coreDataElexRacesImporter({
   config,
   argv
 }) {
+  // Batch if not defined
+  argv.batch = argv.batch === undefined ? 200 : argv.batch;
+
   // Make sure election is given
   if (!argv.election) {
     throw new Error(

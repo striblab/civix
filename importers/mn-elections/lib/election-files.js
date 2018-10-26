@@ -74,7 +74,7 @@ let elections = {
 };
 
 // Get file from
-async function getFile(election, file) {
+async function getFile(election, file, options = {}) {
   debug(`Fetching ${file.file} from ${election}.`);
 
   // Download
@@ -85,7 +85,7 @@ async function getFile(election, file) {
   });
 
   // No change
-  if (dl && dl.fileChanged === false) {
+  if (!options.ignoreCache && dl && dl.fileChanged === false) {
     debug(`File unchanged: ${file.file}`);
     return [];
   }
@@ -143,14 +143,14 @@ async function getFile(election, file) {
 }
 
 // Get all files for an election
-async function getFiles(election) {
+async function getFiles(election, options = {}) {
   let files = elections[election.replace(/-/g, '')];
   if (!files) {
     throw new Error(`Unable to find files for election: ${election}`);
   }
 
   for (let file of files) {
-    file.contests = await getFile(election, file);
+    file.contests = await getFile(election, file, options);
   }
 
   return files;

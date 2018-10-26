@@ -27,6 +27,9 @@ module.exports = async function mnElectionsMNContestsImporter({
   argv,
   config
 }) {
+  // Batch if not defined
+  argv.batch = argv.batch === undefined ? 200 : argv.batch;
+
   // Make sure election is given
   if (!argv.election) {
     throw new Error(
@@ -50,7 +53,7 @@ module.exports = async function mnElectionsMNContestsImporter({
   }
 
   // Get files
-  let files = await getFiles(election.get('date'));
+  let files = await getFiles(election.get('date'), argv);
 
   // Records
   let records = [];
