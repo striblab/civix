@@ -676,7 +676,7 @@ parsers.school = async (data, options) => {
     : contestName;
 
   // Get area from DB
-  let areaRecord = await options.models.Boundary.findOne({
+  let areaRecord = await options.db.findOneCached(options.models.Boundary, {
     where: { id: `usa-mn-school-${districtId}` }
   });
   let area = areaRecord ? areaRecord.get('title') : undefined;
@@ -841,7 +841,7 @@ parsers['county-commissioner'] = async (data, options) => {
   let countyFips = mnCountyToFips(contest.county);
 
   // Get county name
-  let areaRecord = await options.models.Boundary.findOne({
+  let areaRecord = await options.db.findOneCached(options.models.Boundary, {
     where: { id: `usa-county-27${countyFips.padStart(3, '0')}` }
   });
   let area = areaRecord ? areaRecord.get('shortTitle') : undefined;
@@ -928,7 +928,7 @@ parsers['soil-water'] = async (data, options) => {
 
   // Get district name.  There's no good way to know if this
   // contest is a sub district race or just a seat.  Yay!
-  let subdistrictRecord = await options.models.Boundary.findOne({
+  let subdistrictRecord = await options.db.findOneCached(options.models.Boundary, {
     where: {
       id: `usa-mn-soil-water-subdistrict-27-${contest.district.padStart(
         4,
@@ -936,7 +936,7 @@ parsers['soil-water'] = async (data, options) => {
       )}`
     }
   });
-  let soilRecord = await options.models.Boundary.findOne({
+  let soilRecord = await options.db.findOneCached(options.models.Boundary, {
     where: { id: `usa-mn-soil-water-27-${contest.district.padStart(4, '0')}` }
   });
   let subdistrict = !!subdistrictRecord;
@@ -1037,7 +1037,7 @@ parsers.county = async (data, options) => {
   let countyFips = mnCountyToFips(contest.county);
 
   // Get county name
-  let areaRecord = await options.models.Boundary.findOne({
+  let areaRecord = await options.db.findOneCached(options.models.Boundary, {
     where: { id: `usa-county-27${countyFips.padStart(3, '0')}` }
   });
   let area = areaRecord ? areaRecord.get('shortTitle') : undefined;
@@ -1106,7 +1106,7 @@ parsers['hospital-district'] = async (data, options) => {
   let contest = commonParser(data);
 
   // Get area
-  let areaRecord = await options.models.Boundary.findOne({
+  let areaRecord = await options.db.findOneCached(options.models.Boundary, {
     where: {
       id: `usa-mn-hospital-district-27-${contest.district.padStart(4, '0')}`
     }

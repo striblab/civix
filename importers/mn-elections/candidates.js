@@ -52,7 +52,7 @@ module.exports = async function mnElectionsMNContestsImporter({
   }
 
   // Get files
-  let files = await getFiles(election.get('date'));
+  let files = await getFiles(election.get('date'), argv);
 
   // Records
   let records = [];
@@ -74,7 +74,8 @@ module.exports = async function mnElectionsMNContestsImporter({
       let parsedContest = await contestParser(c, {
         type: file.type,
         election,
-        models
+        models,
+        db
       });
 
       // If not parsed, then that means we are skipping it for a reason

@@ -50,7 +50,7 @@ module.exports = async function mnElectionsMNContestsImporter({
   }
 
   // Get files
-  let files = await getFiles(election.get('date'));
+  let files = await getFiles(election.get('date'), argv);
 
   // Get list of boundary id to check against
   let boundaryIds = await models.Boundary.findAll({
@@ -78,7 +78,8 @@ module.exports = async function mnElectionsMNContestsImporter({
       let parsed = await contestParser(c, {
         type: file.type,
         election,
-        models
+        models,
+        db
       });
 
       // Put together records
