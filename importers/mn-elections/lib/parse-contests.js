@@ -773,7 +773,7 @@ parsers.school = async (data, options) => {
       shortTitle,
       sort: makeSort(title),
       area: area,
-      subArea: ward ? `Sub-District ${ward}` : atLarge ? 'at Large' : undefined,
+      subArea: ward ? `Subdistrict ${ward}` : atLarge ? 'at Large' : undefined,
       // Don't have boundaries for sub-districts
       boundary_id: ward ? undefined : `usa-mn-school-${districtId}`,
       body_id: records.body ? records.body.id : undefined
@@ -1301,7 +1301,7 @@ function commonParser(contestData) {
   example.hasWriteIn = !!hasWriteIn;
   example.question = !!questionMatch;
   example.uncontested =
-    contestData.length === example.elect + (hasWriteIn ? 1 : 0);
+    contestData.length <= example.elect + (hasWriteIn ? 1 : 0);
 
   // Remove parts about special
   example.contestNameOriginal = example.contestName;
