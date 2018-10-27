@@ -547,6 +547,27 @@ parsers.local = (data, options) => {
     };
   }
 
+  // Attemp to get question
+  let question;
+  if (options.meta && options.meta.questions && contest.question) {
+    question = _.find(options.meta.questions.data, {
+      contestName: contest.contestName,
+      contest: contest.contest
+    });
+  }
+
+  // Try to get counties from meta
+  let metaCounties;
+  if (options.meta && options.meta['district-local']) {
+    metaCounties = _.filter(options.meta['district-local'].data, d => {
+      return d.mcd === contest.district;
+    });
+  }
+  records.metaSource = {
+    counties: metaCounties,
+    countyIds: _.map(metaCounties, 'countyFips')
+  };
+
   // Discrepency.  Hiblings uses letter for wards, but SoS results use
   // numbers
   // http://www.hibbing.mn.us/city-administration/elected-officials
@@ -615,8 +636,8 @@ parsers.local = (data, options) => {
     uncontested: contest.uncontested,
     partisan: !contest.nonPartisan,
     question: contest.question,
-    // questionTitle: ,
-    // questionText: ,
+    questionTitle: question ? question.questionTitle : undefined,
+    questionText: question ? question.questionText : undefined,
     voteType: undefined,
     reporting: undefined,
     totalPrecincts: contest.totalPrecincts,
@@ -675,6 +696,15 @@ parsers.school = async (data, options) => {
     ? _.startCase(contestName.toLowerCase())
     : contestName;
 
+  // Attemp to get question
+  let question;
+  if (options.meta && options.meta.questions && contest.question) {
+    question = _.find(options.meta.questions.data, {
+      contestName: contest.contestName,
+      contest: contest.contest
+    });
+  }
+
   // Get area from DB
   let areaRecord = await options.db.findOneCached(options.models.Boundary, {
     where: { id: `usa-mn-school-${districtId}` }
@@ -706,6 +736,22 @@ parsers.school = async (data, options) => {
 
   // Records
   let records = {};
+
+  // Try to get counties from meta
+  let metaCounties;
+  if (options.meta && options.meta['district-school']) {
+    metaCounties = _.filter(options.meta['district-school'].data, d => {
+      return (
+        d.schoolType === (districtType === 'ssd' ? '03' : '01') &&
+        d.school === contest.district.padStart(4, '0')
+      );
+    });
+
+    records.metaSource = {
+      counties: metaCounties,
+      countyIds: _.map(metaCounties, 'countyFips')
+    };
+  }
 
   // Body if there's a ward
   if (ward) {
@@ -749,8 +795,8 @@ parsers.school = async (data, options) => {
     uncontested: contest.uncontested,
     partisan: !contest.nonPartisan,
     question: contest.question,
-    // questionTitle: ,
-    // questionText: ,
+    questionTitle: question ? question.questionTitle : undefined,
+    questionText: question ? question.questionText : undefined,
     voteType: undefined,
     reporting: undefined,
     totalPrecincts: contest.totalPrecincts,
@@ -928,14 +974,17 @@ parsers['soil-water'] = async (data, options) => {
 
   // Get district name.  There's no good way to know if this
   // contest is a sub district race or just a seat.  Yay!
-  let subdistrictRecord = await options.db.findOneCached(options.models.Boundary, {
-    where: {
-      id: `usa-mn-soil-water-subdistrict-27-${contest.district.padStart(
-        4,
-        '0'
-      )}`
+  let subdistrictRecord = await options.db.findOneCached(
+    options.models.Boundary,
+    {
+      where: {
+        id: `usa-mn-soil-water-subdistrict-27-${contest.district.padStart(
+          4,
+          '0'
+        )}`
+      }
     }
-  });
+  );
   let soilRecord = await options.db.findOneCached(options.models.Boundary, {
     where: { id: `usa-mn-soil-water-27-${contest.district.padStart(4, '0')}` }
   });
@@ -1252,7 +1301,7 @@ function commonParser(contestData) {
   example.hasWriteIn = !!hasWriteIn;
   example.question = !!questionMatch;
   example.uncontested =
-    contestData.length === example.seats + (hasWriteIn ? 1 : 0);
+    contestData.length === example.elect + (hasWriteIn ? 1 : 0);
 
   // Remove parts about special
   example.contestNameOriginal = example.contestName;

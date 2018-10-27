@@ -6,15 +6,15 @@
 const { randomId } = require('../../lib/strings.js');
 
 // Describe command use
-exports.command = 'print <election-id>';
+exports.command = 'print <election>';
 
 // Description
 exports.describe = 'Create output for print.';
 
 // Options
 exports.builder = yargs => {
-  yargs.positional('election-id', {
-    describe: 'The ID of the election to export.',
+  yargs.positional('election', {
+    describe: 'The date of the election to export, such as 2018-11-06.',
     type: 'string'
   });
   yargs.options('upload', {

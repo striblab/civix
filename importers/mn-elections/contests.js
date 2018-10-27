@@ -6,6 +6,7 @@
 const _ = require('lodash');
 const { importRecords } = require('../../lib/importing.js');
 const { getFiles } = require('./lib/election-files.js');
+const { getFiles: getMetaFiles } = require('./lib/meta-files.js');
 const { contestParser } = require('./lib/parse-contests.js');
 const debug = require('debug')('civix:importer:mn-contests');
 
@@ -49,6 +50,9 @@ module.exports = async function mnElectionsMNContestsImporter({
     throw new Error(`Unable to find election: mn-${argv.election}`);
   }
 
+  // Get meta data
+  let meta = await getMetaFiles(election.get('date'), argv);
+
   // Get files
   let files = await getFiles(election.get('date'), argv);
 
@@ -79,7 +83,8 @@ module.exports = async function mnElectionsMNContestsImporter({
         type: file.type,
         election,
         models,
-        db
+        db,
+        meta
       });
 
       // Put together records
@@ -125,7 +130,8 @@ module.exports = async function mnElectionsMNContestsImporter({
               sourceData: {
                 'mn-sos-ftp': {
                   about: 'Taken from results level data',
-                  data: c
+                  data: c,
+                  meta: parsed.metaSource
                 }
               }
             })
