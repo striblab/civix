@@ -51,9 +51,8 @@ module.exports = async ({ logger, models, argv }) => {
     order: [
       ['sort', 'ASC'],
       ['title', 'ASC'],
-      //[{ model: models.Result, as: 'results' }, 'winner', 'DESC'],
       [{ model: models.Result }, 'winner', 'DESC'],
-      [{ model: models.Result }, 'percent', 'DESC'],
+      [{ model: models.Result }, 'votes', 'DESC'],
       [{ model: models.Party }, 'sort', 'ASC'],
       [{ model: models.Result }, { model: models.Candidate }, 'sort', 'ASC']
     ],
@@ -97,50 +96,43 @@ module.exports = async ({ logger, models, argv }) => {
   // Turn to json
   let simpleContests = _.map(contests, c => {
     let p = c.get({ plain: true });
-
-    // Group sub results
-    p.subResults = _.mapValues(_.groupBy(p.subResults, 'division_id'), g =>
-      _.groupBy(g, 'boundary_version_id')
-    );
-
     return pruneEmpty(p);
   });
 
   // Just top level results
-  let topResults = _.map(simpleContests, c => _.omit(c, 'subResults'));
+  let topContests = _.filter(simpleContests, c => !c.subContest);
 
-  // Output all
-  // let allPath = path.join(electionContestsPath, 'all.json');
-  // fs.writeFileSync(allPath, JSON.stringify(topResults));
+  // Sub contests
+  let subContests = _.filter(simpleContests, c => c.subContest);
 
   // Each contest
   let byContestPath = path.join(electionContestsPath, 'contests');
   fs.mkdirpSync(byContestPath);
-  _.each(topResults, c => {
+  _.each(topContests, c => {
     fs.writeFileSync(
       path.join(byContestPath, `${c.id}.json`),
       JSON.stringify(c)
     );
   });
 
-  // Each contest (with sub results)
-  fs.mkdirpSync(byContestPath);
-  _.each(simpleContests, c => {
-    if (!c.subResults || _.isEmpty(c.subResults)) {
-      return;
-    }
-
-    fs.writeFileSync(
-      path.join(byContestPath, `${c.id}.sub-results.json`),
-      JSON.stringify(c)
-    );
+  // Sub contests
+  let bySubContestsPath = path.join(electionContestsPath, 'sub-contests');
+  fs.mkdirpSync(bySubContestsPath);
+  _.each(_.groupBy(subContests, 'parent_id'), (g, gi) => {
+    // Then group by division id
+    _.each(_.groupBy(g, 'division_id'), (sg, sgi) => {
+      fs.writeFileSync(
+        path.join(bySubContestsPath, `${gi}.${sgi}.json`),
+        JSON.stringify(sg)
+      );
+    });
   });
 
   // By body (and then office)
   let byBodyPath = path.join(electionContestsPath, 'by-body');
   fs.mkdirpSync(byBodyPath);
   _.each(
-    _.groupBy(_.filter(topResults, c => c.office && c.office.body_id), c => {
+    _.groupBy(_.filter(topContests, c => c.office && c.office.body_id), c => {
       return c.office.body_id;
     }),
     (g, gi) => {
@@ -197,7 +189,7 @@ module.exports = async ({ logger, models, argv }) => {
   // By office
   let byOfficePath = path.join(electionContestsPath, 'by-office');
   fs.mkdirpSync(byOfficePath);
-  _.each(_.groupBy(topResults, c => c.office_id), (g, gi) => {
+  _.each(_.groupBy(topContests, c => c.office_id), (g, gi) => {
     let office =
       gi && gi !== 'null'
         ? _.cloneDeep(g[0].office)
