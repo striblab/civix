@@ -57,7 +57,7 @@ module.exports = async function coreDataElexRacesImporter({
   let candidates = _.filter(results, r => {
     return (
       r.statepostal === argv.state.toUpperCase() &&
-      r.reportingunitid.match(/^state/i)
+      (!r.reportingunitid || r.reportingunitid.match(/^state/i))
     );
   });
 

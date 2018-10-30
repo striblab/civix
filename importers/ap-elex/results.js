@@ -61,7 +61,7 @@ module.exports = async function coreDataElexRacesImporter({
   results = _.filter(results, r => {
     return (
       r.statepostal === argv.state.toUpperCase() &&
-      r.reportingunitid.match(/^state/i)
+      (!r.reportingunitid || r.reportingunitid.match(/^state/i))
     );
   });
 
@@ -86,7 +86,10 @@ module.exports = async function coreDataElexRacesImporter({
       id: resultId,
       contest_id: parsedContest.contest.id,
       candidate_id: candidateId,
-      apId: result.id,
+      // Production data doesn't have reportingunitid, which is used
+      // in creating the ID, and there is a "None", which assumingly
+      // comes from Elex. Who knows.
+      apId: result.id.replace('-None', '-state-MN-1'),
       apUpdated: result.lastupdated ? new Date(result.lastupdated) : undefined,
       units: undefined,
       votes: result.votecount,
@@ -94,17 +97,6 @@ module.exports = async function coreDataElexRacesImporter({
       winner: result.winner,
       incumbent: result.incumbent,
       test: config.testResults,
-
-      //subResult: isCounty ? true : false,
-      // resultDetails: isCounty
-      //   ? {
-      //     reporting: result.precinctsreporting,
-      //     totalPrecincts: result.precinctstotal
-      //   }
-      //   : undefined,
-      //boundary_version_id: boundaryVersionId ? boundaryVersionId : undefined,
-      //division_id: isCounty ? result.level : undefined,
-
       sourceData: {
         'ap-elex': {
           data: result
@@ -118,6 +110,7 @@ module.exports = async function coreDataElexRacesImporter({
       record: resultRecord,
       options: {
         pick: [
+          'apId',
           'test',
           'winner',
           'votes',

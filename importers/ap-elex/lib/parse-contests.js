@@ -480,12 +480,12 @@ function parseStateHouse(data, options = {}) {
 
 // Parse contest type
 function parseContestType(input) {
-  return input.match(/^p$/i) ? 'primary' : 'general';
+  return input && input.match(/^p$/i) ? 'primary' : 'general';
 }
 
-// Is part
+// Is party
 function isParty(input) {
-  return input.match(/^(np)$/i) ? false : true;
+  return !input || input.match(/^(np)$/i) ? false : true;
 }
 
 module.exports = parseRouter;

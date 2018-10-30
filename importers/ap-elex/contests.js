@@ -34,7 +34,7 @@ module.exports = async function coreDataElexRacesImporter({
   // Get elex races.  We use the results to set things up, since
   // it has more details and sub-contests
   const elex = new Elex({ logger, defaultElection: argv.election });
-  let { data: results, cached } = await elex.results();
+  let { data: results, cached } = await elex.races();
 
   // If cached, then there's no reason to do anything
   if (cached && !argv.ignoreCache) {
@@ -59,11 +59,7 @@ module.exports = async function coreDataElexRacesImporter({
 
   // Filter contests to just the top level
   let contests = _.filter(results, r => {
-    return (
-      r.statepostal === argv.state.toUpperCase() &&
-      r.ballotorder === 1 &&
-      r.reportingunitid.match(/^state/i)
-    );
+    return r.statepostal === argv.state.toUpperCase();
   });
 
   // Records for db
@@ -80,7 +76,6 @@ module.exports = async function coreDataElexRacesImporter({
         record: _.extend(parsed.body, {
           sourceData: {
             'ap-elex': {
-              about: 'Taken from results level data',
               data: contest
             }
           }
@@ -93,7 +88,6 @@ module.exports = async function coreDataElexRacesImporter({
         record: _.extend(parsed.office, {
           sourceData: {
             'ap-elex': {
-              about: 'Taken from results level data',
               data: contest
             }
           }
@@ -106,7 +100,6 @@ module.exports = async function coreDataElexRacesImporter({
         record: _.extend(parsed.contest, {
           sourceData: {
             'ap-elex': {
-              about: 'Taken from results level data',
               data: contest
             }
           }
