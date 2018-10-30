@@ -217,7 +217,7 @@ module.exports = async ({ logger, models, argv }) => {
     return {
       id: c.id,
       t: c.title,
-      d: c.description,
+      q: c.questionTitle ? c.questionTitle : undefined,
       ot:
         c.office && c.office.title && c.office.title !== c.title
           ? c.office.title
