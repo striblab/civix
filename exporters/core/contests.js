@@ -206,7 +206,10 @@ module.exports = async ({ logger, models, argv }) => {
     }
   });
 
-  // Search
+  // Search.
+  // Note that though Lunr pre-indexing would save some processing
+  // on the client, it actually does not pass the meta data through,
+  // and makes a larger size file.
   let searchPath = path.join(electionContestsPath, 'search');
   fs.mkdirpSync(searchPath);
   let contestsForIndex = _.map(topContests, c => {
@@ -215,26 +218,41 @@ module.exports = async ({ logger, models, argv }) => {
       id: c.id,
       t: c.title,
       d: c.description,
-      ot: c.office ? c.office.title : undefined,
-      oa: c.area ? c.office.area : undefined,
-      osa: c.subArea ? c.office.subArea : undefined
+      ot:
+        c.office && c.office.title && c.office.title !== c.title
+          ? c.office.title
+          : undefined,
+      oa:
+        c.office && c.office.area && c.title.indexOf(c.office.area) === -1
+          ? c.office.area
+          : undefined,
+      osa:
+        c.office && c.office.subArea && c.title.indexOf(c.office.subArea) === -1
+          ? c.office.subArea
+          : undefined
     };
-  });
-  let contestIndex = lunr(function() {
-    this.ref('id');
-    this.field('t');
-    //this.field('d');
-    //this.field('ot');
-    this.field('oa');
-    //this.field('osa');
-
-    contestsForIndex.forEach(c => {
-      this.add(c);
-    });
   });
 
   fs.writeFileSync(
-    path.join(searchPath, 'index.lunr.json'),
-    JSON.stringify(contestIndex)
+    path.join(searchPath, 'search.json'),
+    JSON.stringify(contestsForIndex)
   );
+
+  // let contestIndex = lunr(function() {
+  //   this.ref('id');
+  //   this.field('t');
+  //   //this.field('d');
+  //   //this.field('ot');
+  //   this.field('oa');
+  //   //this.field('osa');
+
+  //   contestsForIndex.forEach(c => {
+  //     this.add(c);
+  //   });
+  // });
+
+  // fs.writeFileSync(
+  //   path.join(searchPath, 'index.lunr.json'),
+  //   JSON.stringify(contestIndex)
+  // );
 };
