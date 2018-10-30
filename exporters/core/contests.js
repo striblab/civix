@@ -6,6 +6,7 @@
 const _ = require('lodash');
 const fs = require('fs-extra');
 const path = require('path');
+const lunr = require('lunr');
 const { pruneEmpty, filterValues } = require('../../lib/collections.js');
 const moment = require('moment-timezone');
 moment.tz.setDefault('America/New_York');
@@ -204,4 +205,36 @@ module.exports = async ({ logger, models, argv }) => {
       );
     }
   });
+
+  // Search
+  let searchPath = path.join(electionContestsPath, 'search');
+  fs.mkdirpSync(searchPath);
+  let contestsForIndex = _.map(topContests, c => {
+    // Use small names to save on JSON
+    return {
+      id: c.id,
+      t: c.title,
+      d: c.description,
+      ot: c.office ? c.office.title : undefined,
+      oa: c.area ? c.office.area : undefined,
+      osa: c.subArea ? c.office.subArea : undefined
+    };
+  });
+  let contestIndex = lunr(function() {
+    this.ref('id');
+    this.field('t');
+    //this.field('d');
+    //this.field('ot');
+    this.field('oa');
+    //this.field('osa');
+
+    contestsForIndex.forEach(c => {
+      this.add(c);
+    });
+  });
+
+  fs.writeFileSync(
+    path.join(searchPath, 'index.lunr.json'),
+    JSON.stringify(contestIndex)
+  );
 };
