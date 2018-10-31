@@ -52,6 +52,13 @@ module.exports = async function mnElectionsMNContestsImporter({
     throw new Error(`Unable to find election: mn-${argv.election}`);
   }
 
+  // Warn if we have the zero flag
+  if (argv.zero) {
+    logger.info(
+      '--zero flag enabled; ALL RESULTS AND PRECINCTS WILL BE ZERO AND WINNERS WILL BE SET TO FALSE.'
+    );
+  }
+
   // Get files
   let files = await getFiles(election.get('date'), argv);
 
@@ -98,9 +105,13 @@ module.exports = async function mnElectionsMNContestsImporter({
           candidate_id: candidateId,
           localId: `${result.id}-${result.candidate}`,
           units: undefined,
-          votes: result.votes,
-          percent: result.percent ? result.percent / 100 : result.percent,
-          winner: undefined,
+          votes: argv.zero ? 0 : result.votes,
+          percent: argv.zero
+            ? 0
+            : result.percent
+              ? result.percent / 100
+              : undefined,
+          winner: argv.zero ? false : undefined,
           incumbent: undefined,
           test: config.testResults,
           sourceData: {
@@ -120,7 +131,7 @@ module.exports = async function mnElectionsMNContestsImporter({
           model: models.Contest,
           record: {
             id: parsedContest.contest.id,
-            reporting: result.precincts,
+            reporting: argv.zero ? 0 : result.precincts,
             totalPrecincts: result.totalVotes
           },
           options: {
