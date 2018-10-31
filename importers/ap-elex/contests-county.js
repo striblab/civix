@@ -62,9 +62,19 @@ module.exports = async function coreDataElexRacesImporter({
     return (
       r.statepostal === argv.state.toUpperCase() &&
       r.ballotorder === 1 &&
+      r.reportingunitid &&
       r.reportingunitid.match(/^county/i)
     );
   });
+
+  // Production data doesn't seem to have county data
+  // at least a few days out.
+  if (!results || !results.length) {
+    logger.info(
+      'County results were not available; the AP may not provide this data leading up to the election.  Your best bet is to use the "test" data, which should have county level results.'
+    );
+    return;
+  }
 
   // Go through results
   for (let result of results) {

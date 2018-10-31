@@ -44,6 +44,13 @@ module.exports = async function coreDataElexRacesImporter({
     throw new Error(`Unable to find election: ${argv.state}-${argv.election}`);
   }
 
+  // Warn if we have the zero flag
+  if (argv.zero) {
+    logger.info(
+      '--zero flag enabled; ALL RESULTS AND PRECINCTS WILL BE ZERO AND WINNERS WILL BE SET TO FALSE.'
+    );
+  }
+
   // Get elex races.  We use the results to set things up, since
   // it has more details and sub-contests
   const elex = new Elex({ logger, defaultElection: argv.election });
@@ -62,9 +69,19 @@ module.exports = async function coreDataElexRacesImporter({
   results = _.filter(results, r => {
     return (
       r.statepostal === argv.state.toUpperCase() &&
+      r.reportingunitid &&
       r.reportingunitid.match(/^county/i)
     );
   });
+
+  // Production data doesn't seem to have county data
+  // at least a few days out.
+  if (!results || !results.length) {
+    logger.info(
+      'County results were not available; the AP may not provide this data leading up to the election.  Your best bet is to use the "test" data with the --zero flag, which should have county level results.'
+    );
+    return;
+  }
 
   // Go through results
   for (let result of results) {
@@ -92,9 +109,9 @@ module.exports = async function coreDataElexRacesImporter({
       apId: result.id,
       apUpdated: result.lastupdated ? new Date(result.lastupdated) : undefined,
       units: undefined,
-      votes: result.votecount,
-      percent: result.votepct,
-      winner: result.winner,
+      votes: argv.zero ? 0 : result.votecount,
+      percent: argv.zero ? 0 : result.votepct,
+      winner: argv.zero ? false : result.winner,
       incumbent: result.incumbent,
       test: config.testResults,
       sourceData: {
@@ -126,7 +143,7 @@ module.exports = async function coreDataElexRacesImporter({
       model: models.Contest,
       record: {
         id: contestId,
-        reporting: result.precinctsreporting,
+        reporting: argv.zero ? 0 : result.precinctsreporting,
         totalPrecincts: result.precinctstotal
       },
       options: {
