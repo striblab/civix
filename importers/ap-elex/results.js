@@ -33,6 +33,13 @@ module.exports = async function coreDataElexRacesImporter({
     );
   }
 
+  // Warn if we have the zero flag
+  if (argv.zero) {
+    logger.info(
+      '--zero flag enabled; ALL RESULTS AND PRECINCTS WILL BE ZERO AND WINNERS WILL BE SET TO FALSE.'
+    );
+  }
+
   // Get election
   let election = await models.Election.findOne({
     where: {
@@ -92,14 +99,15 @@ module.exports = async function coreDataElexRacesImporter({
       apId: result.id.replace('-None', '-state-MN-1'),
       apUpdated: result.lastupdated ? new Date(result.lastupdated) : undefined,
       units: undefined,
-      votes: result.votecount,
-      percent: result.votepct,
-      winner: result.winner,
+      votes: argv.zero ? 0 : result.votecount,
+      percent: argv.zero ? 0 : result.votepct,
+      winner: argv.zero ? false : result.winner,
       incumbent: result.incumbent,
       test: config.testResults,
       sourceData: {
         'ap-elex': {
-          data: result
+          data: result,
+          args: argv
         }
       }
     };
@@ -127,7 +135,7 @@ module.exports = async function coreDataElexRacesImporter({
       model: models.Contest,
       record: {
         id: parsedContest.contest.id,
-        reporting: result.precinctsreporting,
+        reporting: argv.zero ? 0 : result.precinctsreporting,
         totalPrecincts: result.precinctstotal
       },
       options: {
