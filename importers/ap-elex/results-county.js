@@ -7,7 +7,6 @@ const _ = require('lodash');
 const Elex = require('../../lib/elex.js').Elex;
 const contestParser = require('./lib/parse-contests.js');
 const { importRecords } = require('../../lib/importing.js');
-const { makeSort } = require('../../lib/strings.js');
 
 // Import function
 module.exports = async function coreDataElexRacesImporter({
@@ -116,7 +115,8 @@ module.exports = async function coreDataElexRacesImporter({
       test: config.testResults,
       sourceData: {
         'ap-elex': {
-          data: result
+          data: result,
+          args: argv
         }
       }
     };
