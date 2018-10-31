@@ -5,6 +5,7 @@
 // Dependencies
 const path = require('path');
 const fs = require('fs');
+const _ = require('lodash');
 const config = require('../../config');
 const { randomId } = require('../../lib/strings.js');
 
@@ -26,6 +27,12 @@ exports.builder = yargs => {
       'For most importers, importers won\'t update existing data, use this flag to update records that are already there.',
     type: 'boolean',
     default: false
+  });
+  yargs.options('test', {
+    describe:
+      'Turns test on, or use --no-test to turn it off.  Override environment variable: CIVIX_TEST_RESULTS',
+    type: 'boolean',
+    default: undefined
   });
 
   return yargs;
@@ -51,6 +58,11 @@ exports.handler = async argv => {
       new Error(`Unable to find importer at ${importer}`),
       prefixedLogger
     );
+  }
+
+  // Update test if explicit
+  if (_.isBoolean(argv.test)) {
+    config.testResults = argv.test;
   }
 
   // Try to require

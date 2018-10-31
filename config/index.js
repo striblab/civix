@@ -51,8 +51,8 @@ function envParseArray(input, strictArray = false, defaultValue = null) {
   return defaultValue;
 }
 
-// Export
-module.exports = {
+// Make global to ensure its the same across imports
+global.config = global.config || {
   appId: 'civix',
   appName: 'Civix',
 
@@ -79,3 +79,6 @@ module.exports = {
   mnSosFtpUser: process.env.MN_SOS_FTP_USER,
   mnSosFtpPass: process.env.MN_SOS_FTP_PASS
 };
+
+// Export
+module.exports = global.config;
