@@ -67,6 +67,11 @@ module.exports = {
   testResults: envParseBoolean(process.env.CIVIX_TEST_RESULTS, false),
   mnElectionsTestLevel: process.env.CIVIX_MN_ELECTIONS_TEST_LEVEL || 'middle',
   elexFakeFiles: envParseArray(process.env.CIVIX_ELEX_FAKE_FILES, false, null),
+  elexCountyContests: envParseArray(
+    process.env.CIVIX_ELEX_COUNTY_CONTESTS,
+    false,
+    null
+  ),
   ftpPrintHost: process.env.PRINT_FTP_HOST,
   ftpPrintUser: process.env.PRINT_FTP_USER,
   ftpPrintPass: process.env.PRINT_FTP_PASS,

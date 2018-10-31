@@ -33,6 +33,15 @@ module.exports = async function coreDataElexRacesImporter({
     );
   }
 
+  // Notify about limited county processing
+  if (config.elexCountyContests && config.elexCountyContests.length) {
+    logger.info(
+      `Only processing county results for ${
+        config.elexCountyContests.length
+      } contests`
+    );
+  }
+
   // Get election
   let election = await models.Election.findOne({
     where: {
@@ -86,6 +95,13 @@ module.exports = async function coreDataElexRacesImporter({
   for (let result of results) {
     // Parse out some of the high level data and Ids
     let parsed = contestParser(result, { election });
+
+    // Filter out specific contests
+    if (_.isArray(config.elexCountyContests)) {
+      if (config.elexCountyContests.indexOf(parsed.contest.id) === -1) {
+        continue;
+      }
+    }
 
     // Get county fips
     let countyFips = result.fipscode;
