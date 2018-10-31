@@ -28,6 +28,12 @@ exports.builder = yargs => {
     type: 'boolean',
     default: false
   });
+  yargs.options('update-only', {
+    describe:
+      'Use this flag to only do update actions; this means that a record will not be determined if it exists first.  Mostly used for results after contests have been set up.',
+    type: 'boolean',
+    default: false
+  });
   yargs.options('test', {
     describe:
       'Turns test on, or use --no-test to turn it off.  Override environment variable: CIVIX_TEST_RESULTS',
