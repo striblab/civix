@@ -29,6 +29,13 @@ module.exports = async function coreDataElexRacesImporter({
     );
   }
 
+  // Warn if we have the zero flag
+  if (argv.zero) {
+    logger.info(
+      '--zero flag enabled; ALL RESULTS AND PRECINCTS WILL BE ZERO AND WINNERS WILL BE SET TO FALSE.'
+    );
+  }
+
   // Get election
   let election = await models.Election.findOne({
     where: {
@@ -92,16 +99,16 @@ module.exports = async function coreDataElexRacesImporter({
         id: `${body.get('id')}-${party.get('id')}`,
         name: `${body.get('id')}-${party.get('id')}`,
         title: `${body.get('title')} ${party.get('title')} Seats`,
-        shortTitle: `${party.get('shortTitle')} Seats`,
+        shortTitle: `${party.get('shortTitle') || party.get('title')} Seats`,
         sort: makeSort(`${body.get('title')} ${party.get('title')} Seats`),
-        won: parseInteger(trend.won),
-        leading: parseInteger(trend.leading),
+        won: argv.zero ? 0 : parseInteger(trend.won),
+        leading: argv.zero ? 0 : parseInteger(trend.leading),
         holdovers: parseInteger(trend.holdovers),
-        winningTrend: parseInteger(trend.winning_trend),
+        winningTrend: argv.zero ? 0 : parseInteger(trend.winning_trend),
         current: parseInteger(trend.current),
-        insufficientVote: parseInteger(trend.insufficient_vote),
-        netWinners: parseInteger(trend.net_winners),
-        netLeaders: parseInteger(trend.net_leaders),
+        insufficientVote: argv.zero ? 0 : parseInteger(trend.insufficient_vote),
+        netWinners: argv.zero ? 0 : parseInteger(trend.net_winners),
+        netLeaders: argv.zero ? 0 : parseInteger(trend.net_leaders),
         election_id: election.get('id'),
         body_id: body.get('id'),
         party_id: party.get('id'),
