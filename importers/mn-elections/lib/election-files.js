@@ -6,7 +6,10 @@
 const fs = require('fs');
 const path = require('path');
 const _ = require('lodash');
-const semiSV = require('d3-dsv').dsvFormat(';');
+const semiSVParse = require('csv-parse/lib/sync');
+// Note that d3-dsv doesn't handle double quotes correctly
+// and treats them as string delimiters
+//const semiSV = require('d3-dsv').dsvFormat(';');
 const config = require('../../../config/index.js');
 const { download } = require('../../../lib/download.js');
 const { makeId } = require('../../../lib/strings.js');
@@ -129,7 +132,29 @@ async function getFile(election, file, options = {}, { logger }) {
   };
 
   // Parse
-  let parsed = semiSV.parseRows(contents, d => {
+  let parsed = semiSVParse(contents, {
+    cast: false,
+    cast_date: false,
+    delimiter: ';',
+    escape: null,
+    quote: null,
+    relax: true,
+    skip_empty_lines: true,
+    trim: true
+  });
+
+  // Check results
+  parsed = _.filter(parsed, d => {
+    if (d.length !== 16) {
+      debug(d);
+      return false;
+    }
+
+    return true;
+  });
+
+  // Put into an object and parse
+  parsed = _.map(parsed, d => {
     return {
       state: d[0],
       county: d[1],

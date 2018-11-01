@@ -132,7 +132,7 @@ module.exports = async function mnElectionsMNContestsImporter({
           record: {
             id: parsedContest.contest.id,
             reporting: argv.zero ? 0 : result.precincts,
-            totalPrecincts: result.totalVotes
+            totalPrecincts: result.totalPrecincts
           },
           options: {
             pick: ['reporting', 'totalPrecincts']
