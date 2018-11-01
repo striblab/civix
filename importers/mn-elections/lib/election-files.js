@@ -83,7 +83,7 @@ async function getFile(election, file, options = {}, { logger }) {
 
   // Download, check for fake files
   let contents;
-  if (config.test && config.mnSosFakeFiles) {
+  if (config.testResults && config.mnSosFakeFiles) {
     let fakeLocation =
       config.mnSosFakeFiles[
         Math.floor(Math.random() * config.mnSosFakeFiles.length)
