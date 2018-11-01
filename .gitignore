@@ -2,6 +2,7 @@
 .cache
 civix-exports
 .elex
+.mn-sos
 
 # Common
 .vscode

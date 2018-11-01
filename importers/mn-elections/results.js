@@ -60,7 +60,7 @@ module.exports = async function mnElectionsMNContestsImporter({
   }
 
   // Get files
-  let files = await getFiles(election.get('date'), argv);
+  let files = await getFiles(election.get('date'), argv, { logger });
 
   // Records
   let records = [];

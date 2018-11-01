@@ -51,10 +51,10 @@ module.exports = async function mnElectionsMNContestsImporter({
   }
 
   // Get meta data
-  let meta = await getMetaFiles(election.get('date'), argv);
+  let meta = await getMetaFiles(election.get('date'), argv, { logger });
 
   // Get files
-  let files = await getFiles(election.get('date'), argv);
+  let files = await getFiles(election.get('date'), argv, { logger });
 
   // Get list of boundary id to check against
   let boundaryIds = await models.Boundary.findAll({

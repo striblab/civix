@@ -4,6 +4,7 @@
 
 // Dependencies
 const fs = require('fs');
+const path = require('path');
 const _ = require('lodash');
 const semiSV = require('d3-dsv').dsvFormat(';');
 const config = require('../../../config/index.js');
@@ -74,24 +75,40 @@ let elections = {
 };
 
 // Get file from
-async function getFile(election, file, options = {}) {
+async function getFile(election, file, options = {}, { logger }) {
   debug(`Fetching ${file.file} from ${election}.`);
 
-  // Download
-  let dl = await download({
-    url: `ftp://${config.mnSosFtpUser}:${
-      config.mnSosFtpPass
-    }@ftp.sos.state.mn.us/${election.replace(/-/g, '')}/${file.file}`
-  });
+  // Download, check for fake files
+  let contents;
+  if (config.test && config.mnSosFakeFiles) {
+    let fakeLocation =
+      config.mnSosFakeFiles[
+        Math.floor(Math.random() * config.mnSosFakeFiles.length)
+      ];
+    let fakeFile = path.join(fakeLocation, file.file);
+    if (!fs.existsSync(fakeFile)) {
+      throw new Error(`Could not load fake file: ${fakeFile}`);
+    }
 
-  // No change
-  if (!options.ignoreCache && dl && dl.fileChanged === false) {
-    debug(`File unchanged: ${file.file}`);
-    return [];
+    logger.info(`Using fake file: ${fakeFile}`);
+    contents = fs.readFileSync(fakeFile, 'utf-8');
   }
+  else {
+    let dl = await download({
+      url: `ftp://${config.mnSosFtpUser}:${
+        config.mnSosFtpPass
+      }@ftp.sos.state.mn.us/${election.replace(/-/g, '')}/${file.file}`
+    });
 
-  // Read contents
-  let contents = fs.readFileSync(dl.output, 'utf-8');
+    // No change
+    if (!options.ignoreCache && dl && dl.fileChanged === false) {
+      debug(`File unchanged: ${file.file}`);
+      return [];
+    }
+
+    // Read contents
+    contents = fs.readFileSync(dl.output, 'utf-8');
+  }
 
   // Wrapper around parseint and float to help with debugging
   const pInt = input => {
@@ -143,14 +160,14 @@ async function getFile(election, file, options = {}) {
 }
 
 // Get all files for an election
-async function getFiles(election, options = {}) {
+async function getFiles(election, options = {}, { logger }) {
   let files = elections[election.replace(/-/g, '')];
   if (!files) {
     throw new Error(`Unable to find files for election: ${election}`);
   }
 
   for (let file of files) {
-    file.contests = await getFile(election, file, options);
+    file.contests = await getFile(election, file, options, { logger });
   }
 
   return files;
