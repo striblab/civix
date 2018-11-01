@@ -5,9 +5,7 @@
 // Dependencies
 const _ = require('lodash');
 const { importRecords } = require('../../lib/importing.js');
-const { getFiles } = require('./lib/election-files.js');
-const { contestParser } = require('./lib/parse-contests.js');
-//const debug = require('debug')('civix:importer:mn-candidates');
+const debug = require('debug')('civix:importer:mn-winners');
 
 // Import function
 module.exports = async function mnElectionsMNContestsImporter({
@@ -131,17 +129,59 @@ module.exports = async function mnElectionsMNContestsImporter({
     let results = _.orderBy(contest.results, ['votes'], ['desc']);
 
     // Go through results and make update records
-    _.each(results, (r, ri) => {
+    results = _.map(results, (r, ri) => {
       // Select the number of seats that are being elected, but make sure we
       // don't mark a write-in as a winner
       let isWinner = ri < contest.elect && r.candidate.party_id !== 'wi';
 
-      // Make update record
+      // Mark winner
+      r.winner = isWinner;
+      return r;
+    });
+
+    // If no winner (for instance, it's a WI)
+    if (_.filter(results, { winner: true }).length === 0) {
+      continue;
+    }
+
+    // Now, go back through add see if we have ties or close enough
+    // races where a recount might be triggered
+    //
+    // This logic is not exact for the statute, but more conservative
+    // https://www.revisor.mn.gov/statutes/?id=204C.35
+
+    // Get total votes
+    let totalVotes = _.sumBy(results, 'votes');
+
+    // Get list of losers
+    let losers = _.filter(results, { winner: false });
+
+    // Get the least amount of winning votes
+    let leastWinner = _.minBy(_.filter(results, { winner: true }), 'votes');
+
+    // No go through and see if anything is super close
+    let tooClose = !!_.find(losers, l => {
+      let diff = Math.abs(l.votes - leastWinner.votes);
+      let diffPercent = diff / totalVotes;
+
+      // A conservative way to look at it if there is less than
+      // half percent, or less than 10
+      if (diffPercent <= 0.005 || diff <= 10) {
+        return true;
+      }
+    });
+
+    if (tooClose) {
+      debug(`Too close contest: ${contest.id}`);
+    }
+
+    // Put together records
+    _.each(results, r => {
       records.push({
         model: models.Result,
         record: {
           id: r.id,
-          winner: isWinner
+          winner: tooClose ? false : r.winner
         },
         options: {
           pick: ['winner']
