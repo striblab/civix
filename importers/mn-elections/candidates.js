@@ -145,7 +145,7 @@ module.exports = async function mnElectionsMNContestsImporter({
           fullName: _.filter([
             nameParts.prefix,
             nameParts.first,
-            nameParts.nick,
+            nameParts.nick ? `"${nameParts.nick}"` : null,
             nameParts.middle,
             nameParts.last,
             nameParts.suffix
