@@ -31,10 +31,10 @@ module.exports = async function coreDataElexRacesImporter({
     );
   }
 
-  // Get elex races.  We use the results to set things up, since
-  // it has more details and sub-contests
+  // Get results as results actually tell us if
+  // a contest is partisan.
   const elex = new Elex({ logger, defaultElection: argv.election });
-  let { data: results, cached } = await elex.races();
+  let { data: results, cached } = await elex.results();
 
   // If cached, then there's no reason to do anything
   if (cached && !argv.ignoreCache) {
@@ -59,8 +59,15 @@ module.exports = async function coreDataElexRacesImporter({
 
   // Filter contests to just the top level
   let contests = _.filter(results, r => {
-    return r.statepostal === argv.state.toUpperCase();
+    return (
+      r.statepostal === argv.state.toUpperCase() &&
+      r.ballotorder === 1 &&
+      (!r.reportingunitid || r.reportingunitid.match(/^state/i))
+    );
   });
+  // And wonderfully, ap real results before data has duplicates
+  // assuming because of county
+  contests = _.uniqBy(contests, 'id');
 
   // Records for db
   let records = [];
