@@ -132,7 +132,10 @@ module.exports = async function mnElectionsMNContestsImporter({
           name: id,
           party_id: party.get('id'),
           localId: candidate.candidate,
-          first: _.filter([nameParts.first, nameParts.nick])
+          first: _.filter([
+            nameParts.first,
+            nameParts.nick ? `"${nameParts.nick}"` : null
+          ])
             .join(' ')
             .trim(),
           last: nameParts.last || undefined,
