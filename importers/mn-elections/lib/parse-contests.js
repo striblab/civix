@@ -989,8 +989,11 @@ parsers['soil-water'] = async (data, options) => {
     where: { id: `usa-mn-soil-water-27-${contest.district.padStart(4, '0')}` }
   });
   let subdistrict = !!subdistrictRecord;
-  let area = subdistrictRecord
-    ? subdistrictRecord.get('shortTitle')
+  let area = subdistrict
+    ? subdistrictRecord
+      .get('shortTitle')
+      .replace(/district\ssubdistrict\s[0-9]+/i, '')
+      .trim()
     : soilRecord
       ? soilRecord.get('shortTitle')
       : undefined;
@@ -1011,9 +1014,9 @@ parsers['soil-water'] = async (data, options) => {
   let contestId = `${moment(options.election.get('date')).format(
     'YYYYMMDD'
   )}-${officeId}-${contest.contest}`;
-  let title = `${area} Soil and Water Conservation District ${
-    subdistrict ? 'Subdistrict ' + seat : 'Seat ' + seat
-  }`;
+  let title = `${area} Soil and Water Conservation${
+    subdistrict ? '' : ' District'
+  } ${subdistrict ? 'Subdistrict ' + seat : 'Seat ' + seat}`;
   let shortTitle = `${area} Seat ${seat}`;
 
   return {
