@@ -4,6 +4,7 @@
 
 // Dependencies
 const Elex = require('../../lib/elex.js').Elex;
+const { download } = require('../../lib/download.js');
 const { parseInteger, makeSort } = require('../../lib/strings.js');
 const { importRecords } = require('../../lib/importing.js');
 
@@ -15,6 +16,14 @@ module.exports = async function coreDataElexRacesImporter({
   config,
   argv
 }) {
+  // Manual test trend files
+  const manualTestTrendFiles = {
+    'usa-mn-20181106': {
+      senate: '398f79b1f60940b38bca0cee1b7a46c9',
+      house: '9fe8b0ef023541d8a07b6eac0e81915d'
+    }
+  };
+
   // Make sure election is given
   if (!argv.election) {
     throw new Error(
@@ -54,8 +63,35 @@ module.exports = async function coreDataElexRacesImporter({
 
   // Manually do senate and house
   for (let trendType of ['senate', 'house']) {
+    let trendFile;
+    // As per usuall, the AP API is stupid, and even a day before the election
+    // there is no production endpoint for trends.
+    //
+    // This is also coupled wtih the fact that elex doesn't support Test
+    // for tend files
+    // https://github.com/newsdev/elex/issues/308
+    //
+    // So, if test, use a manual endpoint that we download
+    if (
+      config.testResults &&
+      manualTestTrendFiles[election.get('id')] &&
+      manualTestTrendFiles[election.get('id')][trendType]
+    ) {
+      let output = await download({
+        url: `https://api.ap.org/v2/reports/${
+          manualTestTrendFiles[election.get('id')][trendType]
+        }?apiKey=${config.apAPIKey}&format=json`,
+        output: `${manualTestTrendFiles[election.get('id')][trendType]}.json`,
+        ttl: 1000 * 60 * 1.5
+      });
+      trendFile = output.outputFile;
+    }
+
     // Get elex trend data
-    let { data: trends, cached } = await elex.trends({ type: trendType });
+    let { data: trends, cached } = await elex.trends({
+      type: trendType,
+      trendFile
+    });
 
     // If cached, then there's no reason to do anything
     if (cached && !argv.ignoreCache) {
