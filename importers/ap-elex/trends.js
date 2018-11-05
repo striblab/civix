@@ -19,8 +19,8 @@ module.exports = async function coreDataElexRacesImporter({
   // Manual test trend files
   const manualTestTrendFiles = {
     'usa-mn-20181106': {
-      senate: '398f79b1f60940b38bca0cee1b7a46c9',
-      house: '9fe8b0ef023541d8a07b6eac0e81915d'
+      senate: '559fc42f988742cda07ef5164158dc03',
+      house: '824e549b78af4113bfd86f1a760d5e62'
     }
   };
 
@@ -77,14 +77,21 @@ module.exports = async function coreDataElexRacesImporter({
       manualTestTrendFiles[election.get('id')] &&
       manualTestTrendFiles[election.get('id')][trendType]
     ) {
-      let output = await download({
-        url: `https://api.ap.org/v2/reports/${
-          manualTestTrendFiles[election.get('id')][trendType]
-        }?apiKey=${config.apAPIKey}&format=json`,
-        output: `${manualTestTrendFiles[election.get('id')][trendType]}.json`,
-        ttl: 1000 * 60 * 1.5
-      });
-      trendFile = output.outputFile;
+      // Reports seem to change, so if they do, then whatever
+      try {
+        let output = await download({
+          url: `https://api.ap.org/v2/reports/${
+            manualTestTrendFiles[election.get('id')][trendType]
+          }?apiKey=${config.apAPIKey}&format=json`,
+          output: `${manualTestTrendFiles[election.get('id')][trendType]}.json`,
+          ttl: 1000 * 60 * 1.5
+        });
+        trendFile = output.outputFile;
+      }
+      catch (e) {
+        logger.info(`Could not get manual trend report: ${e}`);
+        // Whatever ...
+      }
     }
 
     // Get elex trend data
