@@ -120,6 +120,7 @@ module.exports = async function coreDataElexRacesImporter({
         pick: [
           'apId',
           'test',
+          'incumbent',
           'winner',
           'votes',
           'percent',
