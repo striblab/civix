@@ -155,6 +155,9 @@ async function getFile(election, file, options = {}, { logger }) {
 
   // Put into an object and parse
   parsed = _.map(parsed, d => {
+    // School district
+    let schoolDistrictTypeMatch = d[4].match(/((ssd|isd)\s+#?[0-9]+)/i);
+
     return {
       state: d[0],
       county: d[1],
@@ -174,12 +177,19 @@ async function getFile(election, file, options = {}, { logger }) {
       votes: pInt(d[13]),
       percent: pFloat(d[14]),
       totalVotes: pInt(d[15]),
-      id: makeId(`${d[0]} ${d[1]} ${d[3]}-${d[5]}`)
+      // Due to the fact that Aitkin and Minneapolis share the same school ID
+      // we have to use something more than just the Id numbers
+      id: makeId(
+        `${d[0]} ${d[1]} ${d[3]}-${d[5]} ${
+          schoolDistrictTypeMatch ? schoolDistrictTypeMatch[1] : ''
+        }`
+      )
     };
   });
 
   // Group by contest
   parsed = _.groupBy(parsed, 'id');
+  //console.log(_.size(parsed));
 
   return parsed;
 }

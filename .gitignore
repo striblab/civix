@@ -3,6 +3,7 @@
 civix-exports
 .elex
 .mn-sos
+.local
 
 # Common
 .vscode
